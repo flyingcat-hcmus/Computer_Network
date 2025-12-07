@@ -20,14 +20,18 @@
 #include "../Application/StartApp.cpp" // Chèn hàm khởi động ứng dụng
 #include "../Application/StopApp.cpp"  // Chèn hàm tắt ứng dụng
 
+#include "../Screen Shot/ScreenShot.cpp" // Chèn hàm chụp màn hình
+
 #include <iostream>
 #include <string>
 
 typedef websocketpp::server<websocketpp::config::asio> server;
 
 void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr msg) {
+
     std::string received = msg->get_payload();
     std::cout << "Received: " << received << std::endl;
+
     if (received == "list_apps") {
         // Gọi hàm liệt kê ứng dụng và gửi kết quả về client
         std::string app_list = ListApplication(); // Giả sử hàm này trả về danh sách ứng dụng đã cài đặt
@@ -53,12 +57,51 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
         } 
         s->send(hdl, "Stopping application: " + app_to_stop, msg->get_opcode());
     }
+
+    if (received == "screenshot") {
+        // 1. Chụp màn hình và lưu vào file
+        TakeScreenshot(); // Giả định thành công
+
+        const std::string filename = "screenshot.bmp";
+        std::ifstream file(filename, std::ios::binary | std::ios::ate); // Thêm std::ios::ate để lấy kích thước file dễ hơn
+
+        if (!file.is_open()) {
+            // Xử lý lỗi nếu không mở được file
+            // Gửi thông báo lỗi qua websocket (tùy chọn)
+            std::cerr << "Lỗi: Không thể mở file ảnh chụp màn hình.\n";
+            return; // Dừng xử lý
+        }
+
+        // Lấy kích thước file
+        std::streamsize size = file.tellg();
+        file.seekg(0, std::ios::beg);
+
+        // 2. Đọc file vào buffer
+        std::vector<char> buffer(size);
+        if (file.read(buffer.data(), size)) {
+            // 3. Gửi nhị phân
+            s->send(hdl, buffer.data(), buffer.size(), websocketpp::frame::opcode::binary);
+            std::cout << "Sent " << size << " bytes of screenshot.\n";
+        } 
+        else {
+            std::cerr << "Failed to read screenshot file.\n";
+        }
+
+        // 4. Dọn dẹp (Giải phóng file)
+        file.close(); // Đảm bảo file được đóng trước khi xóa
+        if (std::remove(filename.c_str()) == 0) {
+            std::cout << "Deleted temporary screenshot file.\n";
+        } 
+        else {
+            std::cerr << "Warning: Could not delete temporary screenshot file.\n";
+        }
+    }
 }
 
 int main() {
 
     //----> COMPILE = 
-    // g++ -std=c++17 -I./ -I./asio/include server.cpp -o server.exe -lmswsock  -lws2_32
+    // g++ -std=c++17 -I./ -I./asio/include server.cpp -o server.exe -lmswsock  -lws2_32 -lgdi32 -luser32
     
     server s;
 

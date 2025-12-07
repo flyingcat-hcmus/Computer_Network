@@ -1,4 +1,5 @@
 let ws = new WebSocket("ws://192.168.2.152:9000"); // IP server
+ws.binaryType = "arraybuffer";
 
 ws.onopen = () => {
     log("Connected!");
@@ -7,7 +8,32 @@ ws.onopen = () => {
 
 // // Mỗi khi server gửi lại client bằng s->send thì
 // // data được truyền vào "e"
-// ws.onmessage = (e) => log("Server replied: " + e.data);
+ws.onmessage = (event) => {
+    console.log("Đã nhận dữ liệu từ Server:", event.data); // Kiểm tra Console F12
+
+    if (event.data instanceof ArrayBuffer) {
+        console.log("--> Là dữ liệu nhị phân (Ảnh), kích thước:", event.data.byteLength);
+        
+        // Tạo ảnh
+        let bytes = new Uint8Array(event.data);
+        let blob = new Blob([bytes], { type: "image/bmp" });
+        let url = URL.createObjectURL(blob);
+
+        // Tìm thẻ ảnh cũ để cập nhật, nếu chưa có thì tạo mới
+        let img = document.getElementById("anhManHinh");
+        if (!img) {
+            img = document.createElement("img");
+            img.id = "anhManHinh";
+            img.style.width = "80%"; // Chỉnh lại cho vừa màn hình
+            img.style.border = "5px solid white"; // Viền đỏ cho dễ nhìn
+            document.body.appendChild(img);
+        }
+        img.src = url;
+    } else {
+        console.log("--> Là tin nhắn văn bản:", event.data);
+    }
+};
+
 
 function sendHello() {
     if (ws.readyState === WebSocket.OPEN) {
@@ -20,10 +46,12 @@ function sendHello() {
 
 function log(msg) {
     const logEl = document.getElementById("log");
-    if (logEl) logEl.textContent += msg + "\n";
+    if (logEl) {
+        logEl.append(document.createTextNode(msg));
+        logEl.append(document.createElement("br"));
+    }
 }
 
-let btn = document.getElementById("btn_ListApp");
 function listApp(){
     if (ws.readyState === WebSocket.OPEN){
         ws.send("list_apps");
@@ -67,3 +95,12 @@ function StopApp(event){
 }
 let stopApp = document.getElementById("StopApp");
 stopApp.addEventListener('submit', StopApp)
+
+function screenShot(){
+    if (ws.readyState === WebSocket.OPEN){
+        ws.send("screenshot");
+    }
+    else {
+        log("WebSocket chưa kết nối xong.");
+    }
+}
