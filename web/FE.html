@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h1>WebSocket Test</h1>
+    <button id="btn_SendHello" onclick="sendHello()">Hello</button>
+    <button id="btn_ListApp" onclick="listApp()">List App</button>
+
+    <form action="/" id="StartApp"> 
+        <label for="startapp">Start Application</label>
+        <input type="text" name="startapp" id="startapp" placeholder="Application Name">
+        <input type="submit" value="Start">
+    </form>
+
+    <form action="/" id="StopApp"> 
+        <label for="stopapp">Stop Application</label>
+        <input type="text" name="stopapp" id="stopapp" placeholder="Application Name">
+        <input type="submit" value="Stop">
+    </form>
+
+    <pre id="log"></pre> <!-- phải có id="log" -->
+    <button id="screenshot" onclick="screenShot()">Take screenshot</button>
+
+
+    
+    <video id="videoPlayer" width="640" height="480" controls playsinline muted autoplay></video>
+    <button id="webcam" onclick="webCam()">Webcam Recording</button>
+
+    <script src="backend.js"></script>
+</body>
+</html>
