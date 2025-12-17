@@ -4,6 +4,7 @@
     <h1>WebSocket Test</h1>
     <button id="btn_SendHello" onclick="sendHello()">Hello</button>
     <button id="btn_ListApp" onclick="listApp()">List App</button>
+    <button id="btn_ListProcess" onclick="listProcess()">List Process</button>
 
     <form action="/" id="StartApp"> 
         <label for="startapp">Start Application</label>
@@ -14,6 +15,12 @@
     <form action="/" id="StopApp"> 
         <label for="stopapp">Stop Application</label>
         <input type="text" name="stopapp" id="stopapp" placeholder="Application Name">
+        <input type="submit" value="Stop">
+    </form>
+
+    <form action="/" id="StopProc">
+        <label for="stopproc">Stop Process</label>
+        <input type="text" name="stopproc" id="stopproc" placeholder="Process ID">
         <input type="submit" value="Stop">
     </form>
 

@@ -15,49 +15,57 @@ ws.onopen = () => {
 // // data được truyền vào "e"
 ws.onmessage = (event) => {
 
+    if (flag == -1) {
+        HandleClientMSG(event.data);
+        return;
+    }
+
     if (event.data instanceof ArrayBuffer) {
-        
-        // Tạo ảnh
-        let bytes = new Uint8Array(event.data);
-        let blob = new Blob([bytes], { type: "image/bmp" });
-        let url = URL.createObjectURL(blob);
+        if (flag == 1) {
+            // Tạo ảnh
+            let bytes = new Uint8Array(event.data);
+            let blob = new Blob([bytes], { type: "image/bmp" });
+            let url = URL.createObjectURL(blob);
 
-        // Tìm thẻ ảnh cũ để cập nhật, nếu chưa có thì tạo mới
-        let img = document.getElementById("anhManHinh");
-        if (!img) {
-            img = document.createElement("img");
-            img.id = "anhManHinh";
-            img.style.width = "80%"; // Chỉnh lại cho vừa màn hình
-            img.style.border = "5px solid white"; // Viền đỏ cho dễ nhìn
-            document.body.appendChild(img);
+            // Tìm thẻ ảnh cũ để cập nhật, nếu chưa có thì tạo mới
+            let img = document.getElementById("anhManHinh");
+            if (!img) {
+                img = document.createElement("img");
+                img.id = "anhManHinh";
+                img.style.width = "80%"; // Chỉnh lại cho vừa màn hình
+                img.style.border = "5px solid white"; // Viền đỏ cho dễ nhìn
+                document.body.appendChild(img);
+            }
+            img.src = url;
         }
-        img.src = url;
-    } 
-    else {
-        console.log("--> Là tin nhắn văn bản:", event.data);
+        else if (flag == 2) {
+            // 2. Tạo Blob từ ArrayBuffer nhận được
+            const blob = new Blob([event.data], { type: 'video/mp4' });
+
+            // 3. Tạo URL ảo
+            const videoUrl = URL.createObjectURL(blob);
+
+            // 4. Gán vào Video Player
+            const videoPlayer = document.getElementById('videoPlayer');
+
+            // Xóa URL cũ để giải phóng bộ nhớ (nếu có)
+            if (videoPlayer.src) {
+                URL.revokeObjectURL(videoPlayer.src);
+            }
+
+            videoPlayer.src = videoUrl;
+
+            videoPlayer.play()
+                .then(() => console.log("Đang phát video"))
+                .catch(e => console.error("Lỗi Autoplay:", e));
+
+            document.getElementById('status').innerText = "Đang phát video.";
+        }
     }
-
-    // 2. Tạo Blob từ ArrayBuffer nhận được
-    const blob = new Blob([event.data], { type: 'video/mp4' });
-
-    // 3. Tạo URL ảo
-    const videoUrl = URL.createObjectURL(blob);
-
-    // 4. Gán vào Video Player
-    const videoPlayer = document.getElementById('videoPlayer');
-            
-    // Xóa URL cũ để giải phóng bộ nhớ (nếu có)
-    if (videoPlayer.src) {
-        URL.revokeObjectURL(videoPlayer.src);
+    else if (flag == 0) {
+        log(event.data);
     }
-
-    videoPlayer.src = videoUrl;
-            
-    videoPlayer.play()
-        .then(() => console.log("Đang phát video"))
-        .catch(e => console.error("Lỗi Autoplay:", e));
-
-    document.getElementById('status').innerText = "Đang phát video.";
+    flag = -1;
 }
 
 function HandleClientMSG(data){
@@ -87,9 +95,18 @@ function log(msg) {
     }
 }
 
-function listApp(){
-    if (ws.readyState === WebSocket.OPEN){
+function listApp() {
+    if (ws.readyState === WebSocket.OPEN) {
         ws.send("list_apps");
+    }
+    else {
+        log("WebSocket chưa kết nối xong.");
+    }
+}
+
+function listProcess() { 
+    if (ws.readyState === WebSocket.OPEN) {
+        ws.send("list_processes");
     }
     else {
         log("WebSocket chưa kết nối xong.");
@@ -130,6 +147,23 @@ function StopApp(event){
 }
 let stopApp = document.getElementById("StopApp");
 stopApp.addEventListener('submit', StopApp)
+
+function StopProc(event) {
+    event.preventDefault();
+
+    const procIDInput = document.getElementById('stopproc');
+    const processID = procIDInput.value;
+
+    if (ws.readyState === WebSocket.OPEN) {
+        ws.send("stop_process:" + processID);
+        procIDInput.value = ""
+    }
+    else {
+        log("WebSocket chưa kết nối xong.");
+    }
+}
+let stopProc = document.getElementById("StopProc");
+stopProc.addEventListener('submit', StopProc);
 
 function screenShot(){
     if (ws.readyState === WebSocket.OPEN){
