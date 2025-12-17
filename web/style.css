@@ -68,3 +68,72 @@ tr:hover { background-color: #f1f1f1; }
 .media-display img, .media-display video { max-width: 100%; max-height: 80vh; }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- SERVER CONNECTION BOX --- */
+.connection-box {
+    padding: 15px;
+    background-color: #2c3136;
+    border-bottom: 1px solid #4b545c;
+}
+
+.connection-box label {
+    font-size: 12px;
+    color: #ccc;
+    display: block;
+    margin-bottom: 4px;
+    margin-top: 10px;
+}
+.connection-box label:first-child { margin-top: 0; }
+
+/* Nhóm input scan */
+.scan-group { display: flex; gap: 5px; }
+
+.connection-box input, .connection-box select {
+    width: 100%;
+    padding: 6px;
+    background-color: #343a40;
+    border: 1px solid #6c757d;
+    color: white;
+    font-size: 13px;
+    border-radius: 3px;
+}
+
+/* Dropdown style */
+.connection-box select {
+    cursor: pointer;
+}
+.connection-box select:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+/* Nút Scan nhỏ */
+.btn-scan {
+    padding: 0 10px;
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+.btn-scan:hover { background-color: #138496; }
+
+/* Nút Connect */
+.btn-connect {
+    width: 100%;
+    padding: 8px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    background-color: #28a745; 
+    color: white;
+    transition: 0.3s;
+}
+
+.btn-connect.connected {
+    background-color: #dc3545; /* Đỏ khi muốn ngắt kết nối */
+}

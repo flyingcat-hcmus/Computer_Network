@@ -12,6 +12,25 @@
     <div class="container">
         <div class="sidebar">
             <div class="logo">CONTROL PANEL</div>
+            
+            <div class="connection-box">
+                <label>Network Scanner (Base IP):</label>
+                <div class="scan-group">
+                    <input type="text" id="subnetInput" value="192.168.2." placeholder="Ex: 192.168.1.">
+                    <button class="btn-scan" onclick="scanNetwork()">scan</button>
+                </div>
+                <div id="scanStatus" style="font-size: 11px; color: orange; margin-bottom: 5px; display: none;">Scanning...</div>
+
+                <label>Select Server:</label>
+                <select id="serverList">
+                    <option value="" disabled selected>-- No Server Found --</option>
+                </select>
+                
+                <label>Port:</label>
+                <input type="text" id="serverPort" value="9000" placeholder="9000">
+                
+                <button id="btnConnect" class="btn-connect" onclick="connectToSelected()">Connect</button>
+            </div>
             <div class="status-indicator" id="connectionStatus">🔴 Disconnected</div>
             
             <ul class="nav-links">
