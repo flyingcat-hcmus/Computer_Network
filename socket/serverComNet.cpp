@@ -39,7 +39,7 @@ typedef websocketpp::server<websocketpp::config::asio> server;
 void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr msg, std::vector<std::future<void>> &f) {
     std::string received = msg->get_payload();
     std::cout << "Received: " << received << std::endl;
-
+    
     if (received == "list_apps") {
         // Gọi hàm liệt kê ứng dụng và gửi kết quả về client
         std::string app_list; // Giả sử hàm này trả về danh sách ứng dụng đã cài đặt
@@ -47,13 +47,15 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
         f.back().wait();
         s->send(hdl, app_list, msg->get_opcode());
     }
-
+    
     else if (received.rfind("start_app:", 0) == 0) {
         std::string app_to_start = received.substr(10); // Lấy tên ứng dụng sau "start_app:"
         bool flag = false;
         f.push_back(std::async(std::launch::async, StartApplication, std::ref(app_to_start), std::ref(flag)));
+        f.back().wait();
+        std::cerr << app_to_start << std::endl;
         if (!flag) {
-            std::cout << "Failed to start application: " << app_to_start << std::endl;
+            std::cerr << "Failed to start application: " << app_to_start << std::endl;
             s->send(hdl, "Failed to start application: " + app_to_start, msg->get_opcode());
             return;
         } 
