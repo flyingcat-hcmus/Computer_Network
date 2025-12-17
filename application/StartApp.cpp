@@ -54,7 +54,7 @@ bool FindFileRecursive(const std::wstring& folder, const std::wstring& targetNam
     return false;
 }
 
-bool StartApplication(const std::string& appName) {
+void StartApplication(const std::string& appName, bool &flag) {
     std::wstring wAppName = ToWString(appName);
     std::wstring foundPath = L"";
 
@@ -62,15 +62,15 @@ bool StartApplication(const std::string& appName) {
     if (FindFileRecursive(L"D:\\", wAppName + L".exe", foundPath)) {
         // Khởi động ứng dụng
         ShellExecuteW(NULL, L"open", foundPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
-        return true;
+        flag = true;
     }
     // Tìm file trong ổ C
     else if (FindFileRecursive(L"C:\\", wAppName + L".exe", foundPath)) {
         // Khởi động ứng dụng
         ShellExecuteW(NULL, L"open", foundPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
-        return true;
+        flag = true;
     }
     else {
-        return false;
+        flag = false;
     }
 }

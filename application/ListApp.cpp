@@ -58,7 +58,7 @@ std::wstring ListApplicationFromPath(HKEY hKeyRoot, LPCWSTR path) {
     return s;
 }
 
-std::string ListApplication() {
+void ListApplication(std::string &ans) {
     // Chế độ in Unicode ra console (để không bị lỗi font tên phần mềm)
     _setmode(_fileno(stdout), _O_U16TEXT);
     std::wstring s;
@@ -75,5 +75,5 @@ std::string ListApplication() {
     // std::wcout << L"\n=== PHAN MEM CUA USER HIEN TAI ===" << std::endl;
     s += ListApplicationFromPath(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall");
     
-    return ToUtf8(s);
+    ans = ToUtf8(s);
 }

