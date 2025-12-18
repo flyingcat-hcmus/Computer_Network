@@ -12,30 +12,37 @@ bool StopProcessByName(const std::wstring& processName) {
 
     PROCESSENTRY32W pe;
     pe.dwSize = sizeof(PROCESSENTRY32W);
-
+    
+    bool flag = 0;
     if (Process32FirstW(hSnapshot, &pe)) {
+        bool flag1 = 0;
         do {
-            // So sánh tên process (không phân biệt hoa thường)
-            if (_wcsicmp(pe.szExeFile, processName.c_str()) == 0) {
-                HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pe.th32ProcessID);
-                if (hProcess) {
-                    TerminateProcess(hProcess, 0);
-                    CloseHandle(hProcess);
-                    
-                    // Đánh dấu là đã xóa được ít nhất 1 process
-                    killedAtLeastOne = true; 
-                    
-                    // QUAN TRỌNG: Không đóng hSnapshot ở đây và không return ở đây
-                    // Để vòng lặp tiếp tục chạy và tìm các PID khác có cùng tên
-                }
+            flag1 = 0;
+            HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if (hSnapshot == INVALID_HANDLE_VALUE)
+                return false;
+
+            PROCESSENTRY32W pe;
+            pe.dwSize = sizeof(PROCESSENTRY32W);
+            if (Process32FirstW(hSnapshot, &pe)) {
+                do {
+                    if (_wcsicmp(pe.szExeFile, processName.c_str()) == 0) {
+                        HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pe.th32ProcessID);
+                        if (hProcess) {
+                            TerminateProcess(hProcess, 0);
+                            CloseHandle(hProcess);
+                            CloseHandle(hSnapshot);
+                            flag1 = flag = 1;
+                            //return true;    // Stopped
+                        }
+                    }
+                } while (Process32NextW(hSnapshot, &pe));
             }
-        } while (Process32NextW(hSnapshot, &pe));
+        } while (flag1);
     }
 
-    // Chỉ đóng snapshot sau khi đã duyệt hết toàn bộ danh sách
-    CloseHandle(hSnapshot);
-    
-    return killedAtLeastOne; // Trả về true nếu xóa được ít nhất 1 cái, false nếu không tìm thấy cái nào
+    if (flag) CloseHandle(hSnapshot);
+    return flag;   // Not found
 }
 
 void StopApplication(const std::string& appName, bool &flag) {
