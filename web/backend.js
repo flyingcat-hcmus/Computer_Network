@@ -186,12 +186,6 @@ function HandleClientMSG(data) {
     if (data == "webcam") { flag = 2; return; }
     if (data == "Keylogging started") { flag = 3; logKeyToConsole(">>> [SYSTEM] Keylogger Started"); return; }
     if (data == "Keylogging stopped") { flag = 4; logKeyToConsole(">>> [SYSTEM] Keylogger Stopped"); return; }
-<<<<<<< HEAD
-
-    if (flag === 5) renderProcessListToTable(data);
-    else if (flag == 6) renderAppListToTable(data);
-    else logKeyToConsole(data);
-=======
     if (data === "Keylog") { 
         flag = 7; 
         console.log("WTF");
@@ -201,7 +195,6 @@ function HandleClientMSG(data) {
     if (flag === 5) renderProcessListToTable(data);
     else if (flag == 6) renderAppListToTable(data);
     else if (flag == 7) logKeyToConsole(data);
->>>>>>> tai-phan
 
     if (flag != 3) flag = -1;
 }
@@ -338,22 +331,6 @@ function stopkeyLog() { sendCommand("stop_keylog"); }
 function screenShot() { sendCommand("screenshot"); }
 function webCam() { sendCommand("webcam"); }
 
-<<<<<<< HEAD
-function logKeyToConsole(msg) {
-    const consoleBox = document.getElementById("keylogConsole");
-    const div = document.createElement("div");
-    div.className = "console-line";
-    
-    // Thêm timestamp cho pro
-    const time = new Date().toLocaleTimeString('en-US', {hour12: false});
-    div.innerHTML = `<span style="color: #555">[${time}]</span> ${msg}`;
-    
-    consoleBox.appendChild(div);
-    consoleBox.scrollTop = consoleBox.scrollHeight;
-}
-function clearConsole() { 
-    document.getElementById("keylogConsole").innerHTML = '<div class="console-line system-msg">>> Console cleared.<span class="cursor">_</span></div>'; 
-=======
 // Biến lưu trữ dòng hiện tại
 let currentLogLine = null;
 
@@ -429,5 +406,4 @@ function confirmSystem(action) {
         // Thông báo cho người dùng biết lệnh đã gửi
         logKeyToConsole(`>>> [SYSTEM] Sent ${action.toUpperCase()} command.`);
     }
->>>>>>> tai-phan
 }
