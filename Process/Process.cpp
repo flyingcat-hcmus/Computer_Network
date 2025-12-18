@@ -4,7 +4,7 @@
 #include <iomanip> // For formatting output
 #include "../Application/ConvertString.cpp"
 
-std::string ListRunningProcesses() {
+void ListRunningProcesses(std::string& ans) {
     // 1. Take a snapshot of all processes in the system.
     HANDLE hProcessSnap;
     PROCESSENTRY32 pe32;
@@ -12,7 +12,8 @@ std::string ListRunningProcesses() {
     hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hProcessSnap == INVALID_HANDLE_VALUE) {
         std::cerr << "Error: CreateToolhelp32Snapshot failed." << std::endl;
-        return "";
+        ans = "";
+        return;
     }
 
     // 2. Set the size of the structure before using it.
@@ -22,7 +23,8 @@ std::string ListRunningProcesses() {
     if (!Process32First(hProcessSnap, &pe32)) {
         std::cerr << "Error: Process32First failed." << std::endl;
         CloseHandle(hProcessSnap);
-        return "";
+        ans = "";
+        return;
     }
 
     // Header formatting
@@ -42,5 +44,5 @@ std::string ListRunningProcesses() {
 
     // 5. Clean up the handle
     CloseHandle(hProcessSnap);
-    return ToUtf8(s);
+    ans = ToUtf8(s);
 }
