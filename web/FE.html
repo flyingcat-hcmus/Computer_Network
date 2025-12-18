@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!--<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -137,6 +137,176 @@
         </div>
     </div>
 
+    <script src="backend.js"></script>
+</body>
+</html>-->
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Control Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+            border: none;
+        }
+
+            .btn-warning:hover {
+                background-color: #e0a800;
+            }
+
+        .power-box {
+            margin-top: auto; /* Đẩy xuống dưới cùng nếu sidebar dùng flex column */
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo">CONTROL PANEL</div>
+
+            <div class="connection-box">
+                <label>Network Scanner (Base IP):</label>
+                <div class="scan-group">
+                    <input type="text" id="subnetInput" value="192.168.2." placeholder="Ex: 192.168.1.">
+                    <button class="btn-scan" onclick="scanNetwork()">scan</button>
+                </div>
+                <div id="scanStatus" style="font-size: 11px; color: orange; margin-bottom: 5px; display: none;">Scanning...</div>
+
+                <label>Select Server:</label>
+                <select id="serverList">
+                    <option value="" disabled selected>-- No Server Found --</option>
+                </select>
+
+                <label>Port:</label>
+                <input type="text" id="serverPort" value="9000" placeholder="9000">
+
+                <button id="btnConnect" class="btn-connect" onclick="connectToSelected()">Connect</button>
+            </div>
+            <div class="status-indicator" id="connectionStatus">🔴 Disconnected</div>
+
+            <ul class="nav-links">
+                <li class="active" onclick="switchTab('apps')">Application Manager</li>
+                <li onclick="switchTab('processes')">Process Manager</li>
+                <li onclick="switchTab('keylog')">Keylogger Console</li>
+                <li onclick="switchTab('screenshot')">Screenshot</li>
+                <li onclick="switchTab('webcam')">Webcam Stream</li>
+            </ul>
+
+            <div class="power-box">
+                <label style="display:block; color: #aaa; margin-bottom: 8px; font-size: 12px; font-weight: 500;">SERVER POWER:</label>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-warning" style="width: 50%;" onclick="confirmAction('restart')">
+                        Restart
+                    </button>
+                    <button class="btn btn-danger" style="width: 50%;" onclick="confirmAction('shutdown')">
+                        Shutdown
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div id="tab-apps" class="content-section active">
+                <h2>Application Manager</h2>
+                <div class="control-bar">
+                    <button class="btn btn-primary" onclick="listApp()">Refresh App List</button>
+                    <div class="manual-input">
+                        <input type="text" id="manualAppName" placeholder="App Name (e.g., notepad.exe)">
+                        <button class="btn btn-success" onclick="manualStart()">Start</button>
+                        <button class="btn btn-danger" onclick="manualStop()">Stop</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="appTable">
+                        <thead>
+                            <tr>
+                                <th>Application Name / ID</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="appListBody">
+                            <tr>
+                                <td colspan="2" style="text-align:center">Nhấn "Refresh App List" để lấy dữ liệu...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-processes" class="content-section">
+                <h2>Process Manager</h2>
+                <div class="control-bar">
+                    <button id="btn_ListProcess" class="btn btn-primary" onclick="listProcess()">Refresh Process List</button>
+
+                    <div class="manual-input">
+                        <input type="text" id="manualProcID" placeholder="Process ID (e.g., 1234)">
+                        <button class="btn btn-danger" onclick="manualStopProc()">Kill Process</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="processTable">
+                        <thead>
+                            <tr>
+                                <th>PID</th>
+                                <th>Process Name</th>
+                                <th>Threads</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="processListBody">
+                            <tr>
+                                <td colspan="4" style="text-align:center">Nhấn "Refresh Process List" để lấy dữ liệu...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-keylog" class="content-section">
+                <h2>Keylogger Terminal</h2>
+                <div class="control-bar">
+                    <button class="btn btn-success" onclick="startkeyLog()">Start Logging</button>
+                    <button class="btn btn-danger" onclick="stopkeyLog()">Stop Logging</button>
+                    <button class="btn btn-secondary" onclick="clearConsole()">Clear Console</button>
+                </div>
+                <div class="console-box" id="keylogConsole">
+                    <span class="console-line">Waiting for command...</span>
+                </div>
+            </div>
+
+            <div id="tab-screenshot" class="content-section">
+                <h2>Remote Screenshot</h2>
+                <div class="control-bar">
+                    <button class="btn btn-primary" onclick="screenShot()">Capture Screen</button>
+                </div>
+                <div class="media-display" id="screenshotContainer">
+                    <p>No screenshot captured yet.</p>
+                </div>
+            </div>
+
+            <div id="tab-webcam" class="content-section">
+                <h2>Webcam Streaming</h2>
+                <div class="control-bar">
+                    <button class="btn btn-danger" onclick="webCam()">Record & Stream (10s)</button>
+                </div>
+                <div class="media-display">
+                    <video id="videoPlayer" width="640" height="480" controls playsinline muted></video>
+                </div>
+            </div>
+
+        </div>
+    </div>
     <script src="backend.js"></script>
 </body>
 </html>

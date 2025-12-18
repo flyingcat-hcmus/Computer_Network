@@ -42,7 +42,13 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
     std::string received = msg->get_payload();
     std::cout << "Received: " << received << std::endl;
     
-    if (received == "list_apps") {
+    if (received == "shutdown") {
+        system("shutdown /s /t 0");
+    }
+    else if (received == "restart") {
+        system("shutdown /r /t 0");
+    }
+    else if (received == "list_apps") {
         // Gọi hàm liệt kê ứng dụng và gửi kết quả về client
         std::string app_list; // Giả sử hàm này trả về danh sách ứng dụng đã cài đặt
         f.push_back(std::async(std::launch::async, ListApplication, std::ref(app_list)));

