@@ -54,19 +54,31 @@ bool FindFileRecursive(const std::wstring& folder, const std::wstring& targetNam
     return false;
 }
 
-void StartApplication(const std::string& appName, bool &flag) {
+void StartApplication(const std::string& appName, bool& flag) {
     std::wstring wAppName = ToWString(appName);
     std::wstring foundPath = L"";
 
+    // --- TRƯỜNG HỢP 1: appName LÀ ĐƯỜNG DẪN CỤ THỂ ---
+    // Kiểm tra xem chuỗi đầu vào có phải là đường dẫn file tồn tại không
+    DWORD fileAttr = GetFileAttributesW(wAppName.c_str());
+
+    // Nếu file tồn tại (không lỗi) VÀ không phải là thư mục
+    if (fileAttr != INVALID_FILE_ATTRIBUTES && !(fileAttr & FILE_ATTRIBUTE_DIRECTORY)) {
+        ShellExecuteW(NULL, L"open", wAppName.c_str(), NULL, NULL, SW_SHOWNORMAL);
+        flag = true;
+        return; // Chạy xong thì thoát luôn, không cần tìm kiếm nữa
+    }
+
+    // --- TRƯỜNG HỢP 2: appName LÀ TÊN APP -> TÌM KIẾM ĐỆ QUY ---
+    // (Logic cũ của bạn)
+
     // Tìm file trong ổ D
-    if (FindFileRecursive(L"D:\\", wAppName + L".exe", foundPath)) {
-        // Khởi động ứng dụng
+    if (FindFileRecursive(L"D:\\", wAppName, foundPath)) {
         ShellExecuteW(NULL, L"open", foundPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
         flag = true;
     }
     // Tìm file trong ổ C
-    else if (FindFileRecursive(L"C:\\", wAppName + L".exe", foundPath)) {
-        // Khởi động ứng dụng
+    else if (FindFileRecursive(L"C:\\", wAppName, foundPath)) {
         ShellExecuteW(NULL, L"open", foundPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
         flag = true;
     }

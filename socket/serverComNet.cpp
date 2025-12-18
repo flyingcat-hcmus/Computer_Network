@@ -48,11 +48,14 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
         f.push_back(std::async(std::launch::async, ListApplication, std::ref(app_list)));
         f.back().wait();
         s->send(hdl, app_list, msg->get_opcode());
+        std::cout << "Sent app list." << std::endl;
     }
 
     else if (received == "list_processes") {
         // Gọi hàm liệt kê tiến trình và gửi kết quả về client
-        std::string process_list = ListRunningProcesses(); // Giả sử hàm này trả về danh sách tiến trình đang chạy
+        std::string process_list; // Giả sử hàm này trả về danh sách tiến trình đang chạy
+        f.push_back(std::async(std::launch::async, ListRunningProcesses, std::ref(process_list)));
+        f.back().wait();
 		s->send(hdl, process_list, msg->get_opcode());
         std::cout << "Sent process list." << std::endl;
     }
@@ -62,7 +65,6 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
         bool flag = false;
         f.push_back(std::async(std::launch::async, StartApplication, std::ref(app_to_start), std::ref(flag)));
         f.back().wait();
-        std::cerr << app_to_start << std::endl;
         if (!flag) {
             std::cerr << "Failed to start application: " << app_to_start << std::endl;
             s->send(hdl, "Failed to start application: " + app_to_start, msg->get_opcode());
@@ -74,7 +76,8 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
     else if (received.rfind("stop_app:", 0) == 0) {
         std::string app_to_stop = received.substr(9); // Lấy tên ứng dụng sau "stop_app:"
         bool flag = false;
-        f.push_back(std::async(std::launch::async, StartApplication, std::ref(app_to_stop), std::ref(flag)));
+        f.push_back(std::async(std::launch::async, StopApplication, std::ref(app_to_stop), std::ref(flag)));
+        f.back().wait();
         if (!flag) {
             std::cout << "Failed to stop application: " << app_to_stop << std::endl;
             s->send(hdl, "Failed to stop application: " + app_to_stop, msg->get_opcode());

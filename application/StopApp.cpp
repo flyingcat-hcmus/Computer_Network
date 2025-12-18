@@ -31,5 +31,5 @@ bool StopProcessByName(const std::wstring& processName) {
 
 void StopApplication(const std::string& appName, bool &flag) {
     std::wstring wAppName(appName.begin(), appName.end());
-    flag = StopProcessByName(wAppName + L".exe");
+    flag = StopProcessByName(wAppName);
 }
