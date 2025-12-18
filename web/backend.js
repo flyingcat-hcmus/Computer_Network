@@ -9,7 +9,7 @@ function switchConnMode(mode) {
 
     // 1. Xử lý giao diện nút Tab
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    
+
     if (mode === 'scan') {
         document.getElementById('tabScan').classList.add('active');
         document.getElementById('modeScan').style.display = 'block';
@@ -76,7 +76,7 @@ function checkServer(ip, port, doneCallback) {
     };
     setTimeout(() => {
         if (!isConnected && testWS.readyState !== WebSocket.OPEN) { testWS.close(); }
-    }, 5000); 
+    }, 5000);
 }
 
 function updateDropdown() {
@@ -102,7 +102,7 @@ function connectToSelected() {
 
     // Nếu đang kết nối thì ngắt kết nối
     if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-        ws.close(); 
+        ws.close();
         return;
     }
 
@@ -148,7 +148,7 @@ function onWSOpen() {
 }
 
 function onWSClose() {
-    updateStatus("OFFLINE", "#ff2e63"); 
+    updateStatus("OFFLINE", "#ff2e63");
     const btn = document.getElementById("btnConnect");
     btn.innerHTML = '<i class="fa-solid fa-link"></i> CONNECT';
     btn.classList.remove("connected");
@@ -186,15 +186,16 @@ function HandleClientMSG(data) {
     if (data == "webcam") { flag = 2; return; }
     if (data == "Keylogging started") { flag = 3; logKeyToConsole(">>> [SYSTEM] Keylogger Started"); return; }
     if (data == "Keylogging stopped") { flag = 4; logKeyToConsole(">>> [SYSTEM] Keylogger Stopped"); return; }
-    if (data === "Keylog") { 
-        flag = 7; 
+    if (data === "Keylog") {
+        flag = 7;
         console.log("WTF");
-        return; 
+        return;
     }
 
     if (flag === 5) renderProcessListToTable(data);
     else if (flag == 6) renderAppListToTable(data);
     else if (flag == 7) logKeyToConsole(data);
+    else if (flag == 8) alert(data);
 
     if (flag != 3) flag = -1;
 }
@@ -235,7 +236,7 @@ function renderAppListToTable(dataString) {
 
             // 2. Cột Control (Action)
             const tdAction = document.createElement("td");
-            
+
             // --- SỬA LỖI TẠI ĐÂY: TẠO DIV BAO BỌC ---
             const divGroup = document.createElement("div");
             divGroup.className = "btn-group-horizontal"; // Class CSS mới thêm
@@ -247,9 +248,15 @@ function renderAppListToTable(dataString) {
             else if (!stopTarget.toLowerCase().endsWith(".exe")) stopTarget += ".exe";
 
             // Tạo nút
-            const btnStart = createBtn('Start', "btn-neon-green", () => sendCommand("start_app:" + startTarget));
-            const btnStop = createBtn('Kill', "btn-neon-red", () => sendCommand("stop_app:" + stopTarget));
-            
+            const btnStart = createBtn('Start', "btn-neon-green", () => {
+                flag = 8;
+                sendCommand("start_app:" + startTarget)
+            });
+            const btnStop = createBtn('Kill', "btn-neon-red", () => {
+                flag = 8;
+                sendCommand("stop_app:" + stopTarget)
+            });
+
             // Thêm nút vào DIV Group trước
             divGroup.appendChild(btnStart);
             divGroup.appendChild(btnStop);
@@ -264,9 +271,12 @@ function renderAppListToTable(dataString) {
     });
 }
 
-function manualStart() { const name = document.getElementById("manualAppName").value; if (name) sendCommand("start_app:" + name); }
-function manualStop() { const name = document.getElementById("manualAppName").value; if (name) sendCommand("stop_app:" + name); }
-
+function manualStart() {
+    const name = document.getElementById("manualAppName").value; if (name) { flag = 8; sendCommand("start_app:" + name); }
+}
+function manualStop() {
+    const name = document.getElementById("manualAppName").value; if (name) { flag = 8; sendCommand("stop_app:" + name); }
+}
 function listProcess() {
     if (ws && ws.readyState === WebSocket.OPEN) {
         flag = 5;
@@ -294,25 +304,30 @@ function renderProcessListToTable(dataString) {
         `;
 
         const tdAction = document.createElement("td");
-        
+
         // --- CŨNG BỌC DIV CHO PROCESS ---
         const divGroup = document.createElement("div");
         divGroup.className = "btn-group-horizontal";
 
         const btnKill = createBtn('Kill', "btn-neon-red", () => {
-            if (confirm(`Kill ${name} (PID: ${pid})?`)) sendCommand("stop_process:" + pid);
+            if (confirm(`Kill ${name} (PID: ${pid})?`)) {
+                flag = 8;
+                sendCommand("stop_process:" + pid);
+            }
         });
-        
+
         divGroup.appendChild(btnKill);
         tdAction.appendChild(divGroup);
         tr.appendChild(tdAction);
-        
+
         tbody.appendChild(tr);
     }
     if (count === 0) tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No Data Found</td></tr>';
 }
 
-function manualStopProc() { const pid = document.getElementById("manualProcID").value; if (pid) sendCommand("stop_process:" + pid); }
+function manualStopProc() {
+    const pid = document.getElementById("manualProcID").value; if (pid) { flag = 8; sendCommand("stop_process:" + pid); }
+}
 
 function createBtn(text, className, onClick) {
     const btn = document.createElement("button");
@@ -349,11 +364,11 @@ function logKeyToConsole(msg) {
         // Tạo dòng mới (div)
         const div = document.createElement("div");
         div.className = "console-line";
-        
+
         // Thêm timestamp cho dòng mới
-        const time = new Date().toLocaleTimeString('en-US', {hour12: false});
+        const time = new Date().toLocaleTimeString('en-US', { hour12: false });
         div.innerHTML = `<span style="color: #555">[${time}]</span> `;
-        
+
         consoleBox.appendChild(div);
         currentLogLine = div; // Gán dòng này là dòng hiện tại để các key sau nối vào
     }
@@ -362,7 +377,7 @@ function logKeyToConsole(msg) {
     if (currentLogLine) {
         // Tạo span để bọc ký tự cho đẹp (tùy chọn)
         const keySpan = document.createElement("span");
-        
+
         // Nếu là các phím chức năng (nằm trong ngoặc vuông []), cho màu khác
         if (msg.startsWith("[") && msg.endsWith("]")) {
             keySpan.style.color = "#00ff88"; // Màu xanh cho phím chức năng
@@ -370,7 +385,7 @@ function logKeyToConsole(msg) {
         } else {
             keySpan.innerText = msg;
         }
-        
+
         currentLogLine.appendChild(keySpan);
     }
 
@@ -379,9 +394,9 @@ function logKeyToConsole(msg) {
 }
 
 // Cập nhật lại hàm clearConsole để reset biến dòng hiện tại
-function clearConsole() { 
-    document.getElementById("keylogConsole").innerHTML = '<div class="console-line system-msg">>> Console cleared.<span class="cursor">_</span></div>'; 
-    currentLogLine = null; 
+function clearConsole() {
+    document.getElementById("keylogConsole").innerHTML = '<div class="console-line system-msg">>> Console cleared.<span class="cursor">_</span></div>';
+    currentLogLine = null;
 }
 
 // --- SYSTEM CONTROL LOGIC ---
@@ -391,8 +406,8 @@ function confirmSystem(action) {
         return;
     }
 
-    const msg = action === 'shutdown' ? 
-        "WARNING: This will SHUTDOWN the remote server immediately. Continue?" : 
+    const msg = action === 'shutdown' ?
+        "WARNING: This will SHUTDOWN the remote server immediately. Continue?" :
         "Confirm RESTART of the remote server?";
 
     if (confirm(msg)) {
@@ -402,7 +417,7 @@ function confirmSystem(action) {
         } else {
             sendCommand("restart");
         }
-        
+
         // Thông báo cho người dùng biết lệnh đã gửi
         logKeyToConsole(`>>> [SYSTEM] Sent ${action.toUpperCase()} command.`);
     }
