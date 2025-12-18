@@ -29,7 +29,7 @@ bool StopProcessByName(const std::wstring& processName) {
     return false;   // Not found
 }
 
-bool StopApplication(const std::string& appName) {
+void StopApplication(const std::string& appName, bool &flag) {
     std::wstring wAppName(appName.begin(), appName.end());
-    return StopProcessByName(wAppName + L".exe");
+    flag = StopProcessByName(wAppName + L".exe");
 }

@@ -20,6 +20,8 @@
 #include "../Application/ListApp.cpp"  // Chèn hàm liệt kê ứng dụng đã cài đặt
 #include "../Application/StartApp.cpp" // Chèn hàm khởi động ứng dụng
 #include "../Application/StopApp.cpp"  // Chèn hàm tắt ứng dụng
+#include "../Process/Process.cpp"    // Chèn hàm liệt kê tiến trình đang chạy
+#include "../Process/StopProc.cpp" // Chèn hàm tắt tiến trình theo PID
 
 #include "../Screen Shot/ScreenShot.cpp" // Chèn hàm chụp màn hình
 
@@ -42,6 +44,13 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
 		std::cout << "Sent application list." << std::endl;
     }
 
+    else if (received == "list_processes") {
+        // Gọi hàm liệt kê tiến trình và gửi kết quả về client
+        std::string process_list = ListRunningProcesses(); // Giả sử hàm này trả về danh sách tiến trình đang chạy
+		s->send(hdl, process_list, msg->get_opcode());
+        std::cout << "Sent process list." << std::endl;
+	}
+
     else if (received.rfind("start_app:", 0) == 0) {
         std::string app_to_start = received.substr(10); // Lấy tên ứng dụng sau "start_app:"
         if (!StartApplication(app_to_start)) {
@@ -61,6 +70,17 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
         } 
         s->send(hdl, "Stopping application: " + app_to_stop, msg->get_opcode());
     }
+
+    else if (received.rfind("stop_process:", 0) == 0) {
+        std::string pid_str = received.substr(13); // Lấy PID sau "stop_process:"
+        DWORD pid = std::stoul(pid_str);
+        if (!StopProcessById(pid)) {
+            std::cout << "Failed to stop process with PID: " << pid << std::endl;
+            s->send(hdl, "Failed to stop process with PID: " + pid_str, msg->get_opcode());
+            return;
+        } 
+        s->send(hdl, "Stopped process with PID: " + pid_str, msg->get_opcode());
+	}
 
     else if (received == "screenshot") {
         // 1. Chụp màn hình và lưu vào file

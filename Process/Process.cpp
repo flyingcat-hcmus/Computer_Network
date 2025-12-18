@@ -2,6 +2,7 @@
 #include <tlhelp32.h>
 #include <iostream>
 #include <iomanip> // For formatting output
+#include "../Application/ConvertString.cpp"
 
 std::string ListRunningProcesses() {
     // 1. Take a snapshot of all processes in the system.
@@ -11,7 +12,7 @@ std::string ListRunningProcesses() {
     hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hProcessSnap == INVALID_HANDLE_VALUE) {
         std::cerr << "Error: CreateToolhelp32Snapshot failed." << std::endl;
-        return;
+        return "";
     }
 
     // 2. Set the size of the structure before using it.
@@ -21,14 +22,14 @@ std::string ListRunningProcesses() {
     if (!Process32First(hProcessSnap, &pe32)) {
         std::cerr << "Error: Process32First failed." << std::endl;
         CloseHandle(hProcessSnap);
-        return;
+        return "";
     }
 
     // Header formatting
-    std::cout << std::left << std::setw(10) << "PID"
-              << std::setw(30) << "Process Name"
-              << "Threads" << std::endl;
-    std::cout << "--------------------------------------------------------" << std::endl;
+    //std::cout << std::left << std::setw(10) << "PID"
+    //          << std::setw(30) << "Process Name"
+    //          << "Threads" << std::endl;
+    //std::cout << "--------------------------------------------------------" << std::endl;
 
     // 4. Walk the snapshot of processes using do-while loop
     std::wstring s;
