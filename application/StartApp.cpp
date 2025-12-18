@@ -6,83 +6,64 @@
 #include <filesystem>
 #include "ConvertString.cpp"
 
-// Tìm file theo tên trong toàn bộ ổ D
-bool FindFileRecursive(const std::wstring& folder, const std::wstring& targetName, std::wstring& outputPath)
+bool StartAppViaAppPaths(const std::wstring& exeName)
 {
+    HKEY hKey;
+    std::wstring keyPath =
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + exeName;
 
-    WIN32_FIND_DATAW fd;
-    HANDLE hFind;
-
-    std::wstring search = folder + L"\\*";
-
-    hFind = FindFirstFileW(search.c_str(), &fd);
-    if (hFind == INVALID_HANDLE_VALUE)
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, keyPath.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS &&
+        RegOpenKeyExW(HKEY_CURRENT_USER, keyPath.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS)
         return false;
 
-    do {
-        std::wstring name = fd.cFileName;
+    WCHAR path[MAX_PATH];
+    DWORD size = sizeof(path);
 
-        // Skip . ..
-        if (name == L"." || name == L"..")
-            continue;
+    if (RegQueryValueExW(hKey, nullptr, nullptr, nullptr, (LPBYTE)path, &size) == ERROR_SUCCESS)
+    {
+        ShellExecuteW(nullptr, L"open", path, nullptr, nullptr, SW_SHOWNORMAL);
+        RegCloseKey(hKey);
+        return true;
+    }
 
-        std::wstring fullPath = folder + L"\\" + name;
-
-        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-        {
-            // Đệ quy vào thư mục con
-            if (FindFileRecursive(fullPath, targetName, outputPath))
-            {
-                FindClose(hFind);
-                return true;
-            }
-        }
-        else
-        {
-            // Kiểm tra tên file
-            if (_wcsicmp(name.c_str(), targetName.c_str()) == 0)
-            {
-                outputPath = fullPath;
-                FindClose(hFind);
-                return true;
-            }
-        }
-
-    } while (FindNextFileW(hFind, &fd));
-
-    FindClose(hFind);
+    RegCloseKey(hKey);
     return false;
 }
 
-void StartApplication(const std::string& appName, bool& flag) {
-    std::wstring wAppName = ToWString(appName);
-    std::wstring foundPath = L"";
+void StartApplication(const std::string& appName, bool& flag)
+{
+    std::wstring wApp = ToWString(appName);
 
-    // --- TRƯỜNG HỢP 1: appName LÀ ĐƯỜNG DẪN CỤ THỂ ---
-    // Kiểm tra xem chuỗi đầu vào có phải là đường dẫn file tồn tại không
-    DWORD fileAttr = GetFileAttributesW(wAppName.c_str());
+    // 1. Thử để Windows tự tìm
+    HINSTANCE h = ShellExecuteW(nullptr, L"open", wApp.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 
-    // Nếu file tồn tại (không lỗi) VÀ không phải là thư mục
-    if (fileAttr != INVALID_FILE_ATTRIBUTES && !(fileAttr & FILE_ATTRIBUTE_DIRECTORY)) {
-        ShellExecuteW(NULL, L"open", wAppName.c_str(), NULL, NULL, SW_SHOWNORMAL);
+    if ((INT_PTR)h > 32) {
         flag = true;
-        return; // Chạy xong thì thoát luôn, không cần tìm kiếm nữa
+        return;
     }
 
-    // --- TRƯỜNG HỢP 2: appName LÀ TÊN APP -> TÌM KIẾM ĐỆ QUY ---
-    // (Logic cũ của bạn)
+    // 2. Thử App Paths
+    if (StartAppViaAppPaths(wApp + L".exe")) {
+        flag = true;
+        return;
+    }
 
-    // Tìm file trong ổ D
-    if (FindFileRecursive(L"D:\\", wAppName, foundPath)) {
-        ShellExecuteW(NULL, L"open", foundPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
-        flag = true;
-    }
-    // Tìm file trong ổ C
-    else if (FindFileRecursive(L"C:\\", wAppName, foundPath)) {
-        ShellExecuteW(NULL, L"open", foundPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
-        flag = true;
-    }
-    else {
-        flag = false;
-    }
+    flag = false;
 }
+
+/*
+// Cách đơn giản hơn nhưng không bao quát bằng cách trên
+bool StartApp(const std::wstring& name)
+{
+    // 1. Để Windows tự resolve
+    HINSTANCE h = ShellExecuteW(nullptr, L"open", name.c_str(),
+                                nullptr, nullptr, SW_SHOWNORMAL);
+    if ((INT_PTR)h > 32)
+        return true;
+
+    // 2. Thử name.exe
+    h = ShellExecuteW(nullptr, L"open", (name + L".exe").c_str(),
+                      nullptr, nullptr, SW_SHOWNORMAL);
+    return (INT_PTR)h > 32;
+} 
+*/

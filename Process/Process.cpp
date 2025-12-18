@@ -4,45 +4,45 @@
 #include <iomanip> // For formatting output
 #include "../Application/ConvertString.cpp"
 
+#include <windows.h>
+#include <tlhelp32.h>
+#include <iostream>
+#include <string>
+#include "../Application/ConvertString.cpp"
+
 void ListRunningProcesses(std::string& ans) {
-    // 1. Take a snapshot of all processes in the system.
     HANDLE hProcessSnap;
-    PROCESSENTRY32 pe32;
+    PROCESSENTRY32W pe32; // Sử dụng bản Unicode tường minh
 
     hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hProcessSnap == INVALID_HANDLE_VALUE) {
-        std::cerr << "Error: CreateToolhelp32Snapshot failed." << std::endl;
         ans = "";
         return;
     }
 
-    // 2. Set the size of the structure before using it.
-    pe32.dwSize = sizeof(PROCESSENTRY32);
+    pe32.dwSize = sizeof(PROCESSENTRY32W);
 
-    // 3. Retrieve information about the first process.
-    if (!Process32First(hProcessSnap, &pe32)) {
-        std::cerr << "Error: Process32First failed." << std::endl;
+    if (!Process32FirstW(hProcessSnap, &pe32)) {
         CloseHandle(hProcessSnap);
         ans = "";
         return;
     }
 
-    // Header formatting
-    //std::cout << std::left << std::setw(10) << "PID"
-    //          << std::setw(30) << "Process Name"
-    //          << "Threads" << std::endl;
-    //std::cout << "--------------------------------------------------------" << std::endl;
-
-    // 4. Walk the snapshot of processes using do-while loop
-    std::wstring s;
+    std::wstring s = L""; 
+    
     do {
-        //std::wcout << std::left << std::setw(10) << pe32.th32ProcessID
-        //           << std::setw(30) << pe32.szExeFile
-        //           << pe32.cntThreads << std::endl;
-		s += L"PID: " + std::to_wstring(pe32.th32ProcessID) + L", Name: " + pe32.szExeFile + L", Threads: " + std::to_wstring(pe32.cntThreads) + L"\n";
-    } while (Process32Next(hProcessSnap, &pe32));
+        // TRỰC TIẾP khởi tạo wstring từ WCHAR array (szExeFile)
+        // Cách này không gây lỗi constructor vì kiểu dữ liệu tương thích hoàn toàn
+        std::wstring wExeName = pe32.szExeFile; 
 
-    // 5. Clean up the handle
+        s += L"PID: " + std::to_wstring(pe32.th32ProcessID) + 
+             L", Name: " + wExeName + 
+             L", Threads: " + std::to_wstring(pe32.cntThreads) + L"\n";
+
+    } while (Process32NextW(hProcessSnap, &pe32));
+
     CloseHandle(hProcessSnap);
+    
+    // Sử dụng hàm ToUtf8 bạn đã include để chuyển từ wstring sang string (UTF-8) để gửi qua socket
     ans = ToUtf8(s);
 }
