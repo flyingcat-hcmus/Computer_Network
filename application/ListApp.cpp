@@ -2,9 +2,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <fcntl.h>
-#include <io.h>
-#include <string>
 #include "ConvertString.cpp"
 
 // Link thư viện Registry
@@ -13,41 +10,48 @@
 #define MAX_KEY_LENGTH 255
 #define MAX_VALUE_NAME 16383
 
-// Hàm đọc và in danh sách phần mềm từ một đường dẫn Registry cụ thể
-std::wstring ListApplicationFromPath(HKEY hKeyRoot, LPCWSTR path) {
-    std::wstring s; // Luu danh sách phần mềm
+// --- HÀM HỖ TRỢ CHUYỂN ĐỔI UNICODE SANG UTF-8 (Để gửi qua WebSocket) ---
+
+// --- HÀM ĐỌC REGISTRY TỪ MỘT ĐƯỜNG DẪN CỤ THỂ ---
+void GetAppsFromKey(HKEY hKeyRoot, LPCWSTR path, std::vector<std::string>& appList) {
     HKEY hKey;
-    // Mở khóa Registry chính (Uninstall)
+    // Mở khóa Registry chính
     if (RegOpenKeyExW(hKeyRoot, path, 0, KEY_READ, &hKey) != ERROR_SUCCESS) {
-        return L"";
+        return;
     }
 
-    WCHAR    achKey[MAX_KEY_LENGTH];   // Buffer chứa tên subkey
-    DWORD    cbName;                   // Kích thước tên subkey
-    DWORD    cSubKeys = 0;             // Số lượng subkey
+    WCHAR achKey[MAX_KEY_LENGTH];   // Tên subkey (GUID)
+    DWORD cbName;                   // Kích thước tên
+    DWORD cSubKeys = 0;             // Số lượng phần mềm
 
-    // Lấy thông tin về số lượng phần mềm (subkeys)
+    // Lấy thông tin số lượng subkey
     RegQueryInfoKeyW(hKey, NULL, NULL, NULL, &cSubKeys, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
     if (cSubKeys > 0) {
-        // Duyệt qua từng phần mềm
         for (DWORD i = 0; i < cSubKeys; i++) {
             cbName = MAX_KEY_LENGTH;
-            // Lấy tên định danh của phần mềm (thường là chuỗi GUID loằng ngoằng)
+            // Duyệt qua từng GUID phần mềm
             if (RegEnumKeyExW(hKey, i, achKey, &cbName, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) {
                 
-                // Mở subkey của phần mềm đó để đọc chi tiết
                 HKEY hSubKey;
+                // Mở subkey chi tiết
                 if (RegOpenKeyExW(hKey, achKey, 0, KEY_READ, &hSubKey) == ERROR_SUCCESS) {
                     
                     WCHAR szName[MAX_VALUE_NAME];
                     DWORD dwSize = sizeof(szName);
                     DWORD dwType;
-
-                    // Đọc giá trị "DisplayName" (Tên hiển thị của phần mềm)
+		    // Đọc giá trị "DisplayName"
                     if (RegQueryValueExW(hSubKey, L"DisplayName", NULL, &dwType, (LPBYTE)szName, &dwSize) == ERROR_SUCCESS) {
-                        // In ra màn hình (dùng wcout để in tiếng Việt/Unicode)
-                        s += std::wstring(szName) + L"\n";
+                        std::wstring wName(szName);
+                        
+                        // Lọc bớt các bản cập nhật hệ thống (System Component) nếu muốn danh sách gọn hơn
+                        // DWORD isSystemComponent = 0;
+                        // DWORD dwSizeSys = sizeof(isSystemComponent);
+                        // RegQueryValueExW(hSubKey, L"SystemComponent", NULL, NULL, (LPBYTE)&isSystemComponent, &dwSizeSys);
+                        
+                        if (!wName.empty()) {
+                            appList.push_back(ToUtf8(wName));
+                        }
                     }   
                     RegCloseKey(hSubKey);
                 }
@@ -55,28 +59,25 @@ std::wstring ListApplicationFromPath(HKEY hKeyRoot, LPCWSTR path) {
         }
     }
     RegCloseKey(hKey);
-    return s;
 }
 
-std::string ListApplication() {
-    // Chế độ in Unicode ra console (để không bị lỗi font tên phần mềm)
-    int oldMode = _setmode(_fileno(stdout), _O_WTEXT); // was _O_U16TEXT
-    _setmode(_fileno(stdout), _O_U16TEXT);
-    std::wstring s;
+// --- HÀM CHÍNH ĐỂ GỌI TỪ MAIN/WEBSOCKET ---
+void ListApplication(std::string& ans) {
+    std::vector<std::string> apps;
 
-    // std::wcout << L"=== DANH SACH PHAN MEM DA CAI DAT (64-bit) ===" << std::endl;
-    // 1. Quét phần mềm 64-bit native
-    s += ListApplicationFromPath(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall");
+    // 1. Quét phần mềm 64-bit (Native)
+    GetAppsFromKey(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall", apps);
 
-    // std::wcout << L"\n=== DANH SACH PHAN MEM DA CAI DAT (32-bit) ===" << std::endl;
-    // 2. Quét phần mềm 32-bit (nằm trong WOW6432Node)
-    s += ListApplicationFromPath(HKEY_LOCAL_MACHINE, L"SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall");
-    
-    // 3. Quét phần mềm cài riêng cho User hiện tại (ít gặp hơn nhưng vẫn có)
-    // std::wcout << L"\n=== PHAN MEM CUA USER HIEN TAI ===" << std::endl;
-    s += ListApplicationFromPath(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall");
+    // 2. Quét phần mềm 32-bit trên Win 64-bit (WOW6432Node) - Rất quan trọng vì Chrome, Steam thường nằm đây
+    GetAppsFromKey(HKEY_LOCAL_MACHINE, L"SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall", apps);
 
-    _setmode(_fileno(stdout), oldMode);
-    
-    return ToUtf8(s);
+    // 3. Quét phần mềm User hiện tại (Current User) - Ví dụ: VS Code, Zoom
+    GetAppsFromKey(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall", apps);
+
+    // Nối tất cả thành 1 chuỗi, ngăn cách bởi xuống dòng
+    std::string result = "";
+    for (const auto& app : apps) {
+        result += app + "\n";
+    }
+    ans = result;
 }

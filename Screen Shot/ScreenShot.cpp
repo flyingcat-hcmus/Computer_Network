@@ -43,6 +43,7 @@ bool SaveBMP(const char* filename, HBITMAP hBitmap, HDC hdc, int width, int heig
 }
 
 void TakeScreenshot() {
+    SetProcessDPIAware();
     int width  = GetSystemMetrics(SM_CXSCREEN);
     int height = GetSystemMetrics(SM_CYSCREEN);
 
@@ -53,7 +54,7 @@ void TakeScreenshot() {
     HBITMAP hBitmap = CreateCompatibleBitmap(hdcScreen, width, height);
     SelectObject(memDC, hBitmap);
 
-    BitBlt(memDC, 0, 0, width, height, hdcScreen, 0, 0, SRCCOPY);
+    BitBlt(memDC, 0, 0, width, height, hdcScreen, 0, 0, SRCCOPY | CAPTUREBLT);
 
     SaveBMP("screenshot.bmp", hBitmap, hdcScreen, width, height);
 
