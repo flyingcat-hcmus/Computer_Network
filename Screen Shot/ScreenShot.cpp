@@ -44,7 +44,6 @@ bool SaveBMP(const char* filename, HBITMAP hBitmap, HDC hdc, int width, int heig
 
 void TakeScreenshot() {
     SetProcessDPIAware();
-    
     int width  = GetSystemMetrics(SM_CXSCREEN);
     int height = GetSystemMetrics(SM_CYSCREEN);
 

