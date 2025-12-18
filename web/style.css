@@ -1,139 +1,354 @@
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
+:root {
+    --bg-dark: #0b0c10;
+    --bg-sidebar: #111; /* Đen hơn cho sidebar */
+    --bg-card: #1f2833;
+    --primary: #66fcf1;
+    --primary-dim: rgba(102, 252, 241, 0.1);
+    --text-main: #ffffff;
+    --text-muted: #c5c6c7;
+    --danger: #ff4d4d;
+    --success: #00ff88;
+    --border: #333;
+    --font-ui: 'Inter', sans-serif;
+    --font-code: 'JetBrains Mono', monospace;
+}
 
-body { background-color: #f4f6f9; height: 100vh; display: flex; }
+* { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
 
-.container { display: flex; width: 100%; height: 100%; }
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: var(--font-ui);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
 
 /* --- SIDEBAR --- */
 .sidebar {
-    width: 250px;
-    background-color: #343a40;
-    color: white;
+    width: 270px; /* Rộng hơn chút để thoải mái */
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid #222;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
+    z-index: 100;
+    box-shadow: 5px 0 15px rgba(0,0,0,0.5);
 }
 
-.logo { padding: 20px; font-size: 20px; font-weight: bold; background-color: #212529; text-align: center; }
+.logo {
+    padding: 25px;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border-bottom: 1px solid #222;
+    background: #000;
+}
 
-.status-indicator { padding: 10px; font-size: 12px; text-align: center; color: #ff6b6b; font-weight: bold; }
+.connection-box {
+    padding: 20px;
+    border-bottom: 1px solid #222;
+    transition: all 0.3s ease;
+}
 
-.nav-links { list-style: none; margin-top: 20px; }
-.nav-links li { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #4b545c; transition: 0.3s; }
-.nav-links li:hover { background-color: #495057; }
-.nav-links li.active { background-color: #007bff; border-left: 5px solid #0056b3; }
+.connection-box.active-connection {
+    border-color: var(--success);
+    box-shadow: inset 0 0 20px rgba(0, 255, 136, 0.05);
+}
+
+.section-title {
+    font-size: 10px;
+    color: #666;
+    font-weight: bold;
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+}
+
+/* Input Styles */
+.input-wrapper { margin-bottom: 15px; }
+.input-wrapper label {
+    font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 600;
+}
+.input-group-row { display: flex; width: 100%; }
+
+input[type="text"], select {
+    width: 100%;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: var(--primary);
+    padding: 10px;
+    border-radius: 4px;
+    font-family: var(--font-code);
+    font-size: 13px;
+}
+.input-group-row input {
+    border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none;
+}
+input:focus, select:focus { border-color: var(--primary); }
+
+/* Scan Button (Square Icon) */
+.btn-scan-icon {
+    background: #222;
+    border: 1px solid #333;
+    color: var(--primary);
+    width: 45px;
+    cursor: pointer;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    transition: 0.2s;
+}
+.btn-scan-icon:hover { background: var(--primary); color: #000; }
+
+#scanStatus { 
+    font-size: 11px; color: orange; margin-bottom: 10px; display: none; font-style: italic; 
+}
+
+/* Connect Button */
+.btn-connect {
+    width: 100%; padding: 12px;
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    font-weight: bold; cursor: pointer;
+    text-transform: uppercase; letter-spacing: 1px;
+    transition: 0.3s; margin-top: 5px;
+}
+.btn-connect:hover { background: var(--primary); color: #000; box-shadow: 0 0 15px rgba(102, 252, 241, 0.4); }
+
+.status-indicator {
+    padding: 15px;
+    background: #080808;
+    border-bottom: 1px solid #222;
+    text-align: center;
+    font-size: 12px; font-weight: bold; color: #555;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.status-indicator .dot { width: 8px; height: 8px; background: #555; border-radius: 50%; }
+.status-online { color: var(--success); text-shadow: 0 0 10px rgba(0,255,136,0.5); }
+.status-online .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+/* Nav Links */
+.nav-links { list-style: none; padding-top: 10px; }
+.nav-links li {
+    padding: 16px 25px;
+    cursor: pointer;
+    color: #888;
+    transition: 0.2s;
+    font-size: 14px;
+    border-left: 3px solid transparent;
+}
+.nav-links li:hover { background: rgba(255,255,255,0.03); color: #fff; }
+.nav-links li.active {
+    background: linear-gradient(90deg, rgba(102,252,241,0.08) 0%, transparent 100%);
+    color: var(--primary);
+    border-left-color: var(--primary);
+}
+.nav-links li i { width: 25px; }
 
 /* --- MAIN CONTENT --- */
-.main-content { flex: 1; padding: 20px; overflow-y: auto; }
+.main-content {
+    flex-grow: 1;
+    background-color: var(--bg-dark);
+    background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    padding: 40px;
+    overflow-y: auto;
+}
 
-.content-section { display: none; /* Ẩn mặc định */ }
-.content-section.active { display: block; animation: fadeIn 0.3s; }
+.content-section { display: none; animation: fadeIn 0.4s ease; }
+.content-section.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-h2 { border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-bottom: 20px; color: #333; }
+.header-box {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 30px; border-bottom: 1px solid #222; padding-bottom: 20px;
+}
+h2 { font-weight: 300; font-size: 26px; color: #fff; }
 
-/* --- BUTTONS --- */
-.control-bar { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
-.btn { padding: 10px 15px; border: none; cursor: pointer; color: white; border-radius: 4px; font-weight: 500; }
-.btn-primary { background-color: #007bff; }
-.btn-success { background-color: #28a745; }
-.btn-danger { background-color: #dc3545; }
-.btn-secondary { background-color: #6c757d; }
-.btn:hover { opacity: 0.9; }
+.control-bar { display: flex; gap: 15px; }
+.manual-input { display: flex; gap: 10px; }
+.manual-input input { width: 250px; margin-bottom: 0; }
 
-/* --- FORMS --- */
-input[type="text"] { padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 250px; }
+/* Buttons in Main Content */
+.btn {
+    padding: 8px 16px; border: none; cursor: pointer; border-radius: 4px;
+    font-weight: 600; display: flex; align-items: center; gap: 8px; font-size: 13px;
+}
+.btn-primary { background: #222; border: 1px solid #444; color: #fff; }
+.btn-primary:hover { border-color: #fff; }
 
-/* --- TABLES (APP LIST) --- */
-.table-container { background: white; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow: hidden; }
+.btn-neon-green { background: rgba(0, 255, 136, 0.1); border: 1px solid var(--success); color: var(--success); }
+.btn-neon-green:hover { background: var(--success); color: #000; box-shadow: 0 0 15px rgba(0, 255, 136, 0.4); }
+
+.btn-neon-red { background: rgba(255, 77, 77, 0.1); border: 1px solid var(--danger); color: var(--danger); }
+.btn-neon-red:hover { background: var(--danger); color: #fff; box-shadow: 0 0 15px rgba(255, 77, 77, 0.4); }
+
+.btn-secondary { background: #333; color: #ccc; }
+
+/* --- TABLE STYLES --- */
+.table-container {
+    background: #0f0f0f;
+    border: 1px solid #222;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+}
 table { width: 100%; border-collapse: collapse; }
-th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
-th { background-color: #f8f9fa; font-weight: bold; }
-tr:hover { background-color: #f1f1f1; }
+th {
+    background: #181818; color: var(--primary); text-align: left;
+    padding: 15px 20px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    border-bottom: 1px solid #333;
+}
+td { padding: 12px 20px; border-bottom: 1px solid #222; color: #ccc; vertical-align: middle; }
+tr:hover { background: rgba(255,255,255,0.02); }
 
-/* --- CONSOLE (KEYLOG) --- */
+/* Fix Action Buttons Alignment in Table */
+.action-cell-group {
+    display: flex; gap: 8px; align-items: center;
+}
+td .btn { padding: 6px 10px; font-size: 11px; text-transform: uppercase; }
+
+/* Console & Media */
+.console-wrapper { background: #000; padding: 5px; border: 1px solid #333; border-radius: 5px; }
 .console-box {
-    background-color: #1e1e1e; color: #00ff00;
-    font-family: 'Courier New', monospace;
-    padding: 15px; height: 400px;
-    overflow-y: auto; border-radius: 5px;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    background: #000; color: var(--success); font-family: 'JetBrains Mono', monospace;
+    padding: 15px; height: 400px; overflow-y: auto; font-size: 13px;
 }
-.console-line { display: block; margin-bottom: 5px; border-bottom: 1px solid #333; }
-
-/* --- MEDIA DISPLAY --- */
-.media-display { 
-    background: #000; min-height: 300px; 
-    display: flex; justify-content: center; align-items: center; 
-    border-radius: 5px; border: 5px solid #ccc;
+.media-display {
+    background: #000; min-height: 400px; display: flex;
+    justify-content: center; align-items: center; border: 1px solid #333; border-radius: 5px;
 }
-.media-display img, .media-display video { max-width: 100%; max-height: 80vh; }
+.placeholder-text { text-align: center; color: #333; }
+.placeholder-text i { font-size: 40px; margin-bottom: 10px; }
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0b0c10; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
-/* --- SERVER CONNECTION BOX --- */
-.connection-box {
-    padding: 15px;
-    background-color: #2c3136;
-    border-bottom: 1px solid #4b545c;
-}
+/* --- FIX NÚT START/KILL NẰM NGANG --- */
 
-.connection-box label {
-    font-size: 12px;
-    color: #ccc;
-    display: block;
-    margin-bottom: 4px;
-    margin-top: 10px;
-}
-.connection-box label:first-child { margin-top: 0; }
-
-/* Nhóm input scan */
-.scan-group { display: flex; gap: 5px; }
-
-.connection-box input, .connection-box select {
-    width: 100%;
-    padding: 6px;
-    background-color: #343a40;
-    border: 1px solid #6c757d;
-    color: white;
-    font-size: 13px;
-    border-radius: 3px;
+/* Class bao bọc 2 nút */
+.btn-group-horizontal {
+    display: flex;
+    flex-direction: row;     /* Bắt buộc nằm ngang */
+    align-items: center;     /* Căn giữa theo chiều dọc */
+    gap: 10px;               /* Khoảng cách giữa 2 nút */
+    justify-content: flex-start;
 }
 
-/* Dropdown style */
-.connection-box select {
-    cursor: pointer;
-}
-.connection-box select:focus {
-    outline: none;
-    border-color: #007bff;
+/* Đảm bảo nút không bị co lại hay xuống dòng chữ */
+.btn-group-horizontal .btn {
+    white-space: nowrap;
+    margin: 0 !important;    /* Xóa margin cũ nếu có */
 }
 
-/* Nút Scan nhỏ */
-.btn-scan {
-    padding: 0 10px;
-    background-color: #17a2b8;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 12px;
-    text-transform: uppercase;
+/* Mở rộng cột Control trong bảng một chút để đủ chỗ */
+th:last-child {
+    min-width: 190px;        /* Đảm bảo cột đủ rộng cho 2 nút */
 }
-.btn-scan:hover { background-color: #138496; }
 
-/* Nút Connect */
-.btn-connect {
-    width: 100%;
-    padding: 8px;
-    margin-top: 10px;
-    border: none;
+/* ========================================= */
+/* FIX KÍCH THƯỚC ẢNH SCREENSHOT & WEBCAM */
+/* ========================================= */
+
+/* 1. Cập nhật khung chứa để căn giữa và tạo khoảng đệm */
+.media-display {
+    background: #000;
+    /* Đặt chiều cao cố định hoặc tối thiểu để khung luôn hiển thị */
+    height: 75vh; /* Chiếm 75% chiều cao màn hình */
+    min-height: 400px;
+    display: flex;
+    justify-content: center; /* Căn giữa theo chiều ngang */
+    align-items: center;     /* Căn giữa theo chiều dọc */
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 20px; /* Khoảng cách giữa ảnh và viền khung */
+    overflow: hidden; /* Ẩn phần thừa nếu có */
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5); /* Hiệu ứng chiều sâu */
+}
+
+/* 2. CSS cho hình ảnh và video bên trong khung */
+.media-display img,
+.media-display video {
+    /* Quan trọng: Giới hạn kích thước tối đa */
+    max-width: 100%;
+    max-height: 100%;
+
+    /* Đảm bảo ảnh giữ đúng tỉ lệ khung hình, không bị méo */
+    width: auto;
+    height: auto;
+    object-fit: contain; /* Hiển thị toàn bộ ảnh trong khung */
+
+    /* Thêm hiệu ứng cho đẹp */
     border-radius: 4px;
-    font-weight: bold;
-    cursor: pointer;
-    background-color: #28a745; 
-    color: white;
-    transition: 0.3s;
+    box-shadow: 0 5px 20px rgba(0, 255, 245, 0.1); /* Phát sáng nhẹ màu cyan */
+    border: 1px solid #222;
 }
 
-.btn-connect.connected {
-    background-color: #dc3545; /* Đỏ khi muốn ngắt kết nối */
+/* --- CONNECTION TABS --- */
+.conn-tabs {
+    display: flex;
+    margin-bottom: 15px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #000;
+}
+
+.tab-btn {
+    flex: 1; /* Chia đều 2 bên */
+    text-align: center;
+    padding: 8px 0;
+    font-size: 11px;
+    font-weight: bold;
+    color: #666;
+    cursor: pointer;
+    transition: 0.3s;
+    border-bottom: 2px solid transparent;
+}
+
+.tab-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Tab đang được chọn */
+.tab-btn.active {
+    color: var(--primary); /* Màu xanh neon */
+    background: rgba(102, 252, 241, 0.05);
+    border-bottom: 2px solid var(--primary);
+    text-shadow: 0 0 5px rgba(102, 252, 241, 0.5);
+}
+
+.tab-btn i {
+    margin-right: 5px;
+}
+
+/* Hiệu ứng chuyển đổi */
+.conn-mode-content {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Thêm vách ngăn cho nút đầu tiên (nút bên trái) */
+.tab-btn:first-child {
+    border-right: 1px solid #333; /* Đường kẻ mờ ngăn cách */
+}
+
+/* Tinh chỉnh lại tab active để nó sáng rõ hơn */
+.tab-btn.active {
+    background: rgba(102, 252, 241, 0.08); /* Nền sáng nhẹ */
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary);
 }

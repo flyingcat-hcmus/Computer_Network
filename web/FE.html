@@ -3,54 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Control Dashboard</title>
+    <title>DARK OPS CONTROL</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 </head>
 <body>
 
     <div class="container">
         <div class="sidebar">
-            <div class="logo">CONTROL PANEL</div>
-            
-            <div class="connection-box">
-                <label>Network Scanner (Base IP):</label>
-                <div class="scan-group">
-                    <input type="text" id="subnetInput" value="192.168.2." placeholder="Ex: 192.168.1.">
-                    <button class="btn-scan" onclick="scanNetwork()">scan</button>
-                </div>
-                <div id="scanStatus" style="font-size: 11px; color: orange; margin-bottom: 5px; display: none;">Scanning...</div>
-
-                <label>Select Server:</label>
-                <select id="serverList">
-                    <option value="" disabled selected>-- No Server Found --</option>
-                </select>
-                
-                <label>Port:</label>
-                <input type="text" id="serverPort" value="9000" placeholder="9000">
-                
-                <button id="btnConnect" class="btn-connect" onclick="connectToSelected()">Connect</button>
+            <div class="logo">
+                <i class="fa-solid fa-shield-halved"></i> DARK OPS
             </div>
-            <div class="status-indicator" id="connectionStatus">🔴 Disconnected</div>
-            
-            <ul class="nav-links">
-                <li class="active" onclick="switchTab('apps')">Application Manager</li>
-                <li onclick="switchTab('keylog')">Keylogger Console</li>
-                <li onclick="switchTab('screenshot')">Screenshot</li>
-                <li onclick="switchTab('webcam')">Webcam Stream</li>
-            </ul>
-        </div>
 
+            <div class="connection-box" id="connectionBox">
+                <div class="section-title">CONNECTION CONTROL</div>
+
+                <div class="conn-tabs">
+                    <div class="tab-btn active" onclick="switchConnMode('manual')" id="tabManual">
+                        <i class="fa-solid fa-keyboard"></i> MANUAL
+                    </div>
+                    <div class="tab-btn" onclick="switchConnMode('scan')" id="tabScan">
+                        <i class="fa-solid fa-radar"></i> SCAN
+                    </div>
+                </div>
+                
+                <div id="modeScan" class="conn-mode-content" style="display: none;">
+                    <div class="input-wrapper">
+                        <label><i class="fa-solid fa-network-wired"></i> Base IP Range</label>
+                        <div class="input-group-row">
+                            <input type="text" id="subnetInput" value="192.168.1." placeholder="192.168.1.">
+                            <button class="btn-scan-icon" onclick="scanNetwork()" title="Scan Network">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="scanStatus">Scanning...</div>
+
+                    <div class="input-wrapper">
+                        <label><i class="fa-solid fa-server"></i> Select Target</label>
+                        <select id="serverList">
+                            <option value="" disabled selected>-- No Targets --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="modeManual" class="conn-mode-content">
+                    <div class="input-wrapper">
+                        <label><i class="fa-solid fa-bullseye"></i> Target IP Address</label>
+                        <input type="text" id="manualIpInput" placeholder="Ex: 192.168.1.50">
+                    </div>
+                </div>
+
+                <div class="input-wrapper">
+                    <label><i class="fa-solid fa-door-open"></i> Port</label>
+                    <input type="text" id="serverPort" value="9000" placeholder="9000">
+                </div>
+
+                <button id="btnConnect" class="btn-connect" onclick="connectToSelected()">
+                    <i class="fa-solid fa-link"></i> CONNECT
+                </button>
+            </div>
+
+            <div class="status-indicator" id="connectionStatus">
+                <span class="dot"></span> <span id="statusText">DISCONNECTED</span>
+            </div>
+
+            <ul class="nav-links">
+                <li class="active" onclick="switchTab('apps')"><i class="fa-brands fa-windows"></i> Apps Manager</li>
+                <li onclick="switchTab('processes')"><i class="fa-solid fa-microchip"></i> Processes</li>
+                <li onclick="switchTab('keylog')"><i class="fa-solid fa-terminal"></i> Keylogger</li>
+                <li onclick="switchTab('screenshot')"><i class="fa-solid fa-desktop"></i> Screenshot</li>
+                <li onclick="switchTab('webcam')"><i class="fa-solid fa-camera"></i> Webcam</li>
+            </ul>
+        </div> 
         <div class="main-content">
             
             <div id="tab-apps" class="content-section active">
-                <h2>Application Manager</h2>
-                <div class="control-bar">
-                    <button class="btn btn-primary" onclick="listApp()">Refresh App List</button>
-                    <div class="manual-input">
-                        <input type="text" id="manualAppName" placeholder="App Name (e.g., notepad.exe)">
-                        <button class="btn btn-success" onclick="manualStart()">Start</button>
-                        <button class="btn btn-danger" onclick="manualStop()">Stop</button>
+                <div class="header-box">
+                    <h2><i class="fa-brands fa-windows"></i> Application Manager</h2>
+                    <div class="control-bar">
+                        <div class="manual-input">
+                            <input type="text" id="manualAppName" placeholder="App Name (e.g., notepad.exe)">
+                            <button class="btn btn-neon-green" onclick="manualStart()"><i class="fa-solid fa-play"></i> Run</button>
+                            <button class="btn btn-neon-red" onclick="manualStop()"><i class="fa-solid fa-stop"></i> Kill</button>
+                        </div>
+                        <button class="btn btn-primary" onclick="listApp()"><i class="fa-solid fa-rotate"></i> Refresh List</button>
                     </div>
                 </div>
 
@@ -58,54 +97,82 @@
                     <table id="appTable">
                         <thead>
                             <tr>
-                                <th>Application Name / ID</th>
-                                <th>Actions</th>
+                                <th>Application Name / Path</th>
+                                <th style="width: 180px;">Control</th>
                             </tr>
                         </thead>
                         <tbody id="appListBody">
+                            <tr><td colspan="2" class="empty-state">Waiting for data fetch...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-processes" class="content-section">
+                <div class="header-box">
+                    <h2><i class="fa-solid fa-microchip"></i> Process Manager</h2>
+                    <div class="control-bar">
+                        <div class="manual-input">
+                            <input type="text" id="manualProcID" placeholder="PID (e.g., 1234)">
+                            <button class="btn btn-neon-red" onclick="manualStopProc()"><i class="fa-solid fa-skull"></i> Kill PID</button>
+                        </div>
+                        <button id="btn_ListProcess" class="btn btn-primary" onclick="listProcess()"><i class="fa-solid fa-rotate"></i> Refresh List</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="processTable">
+                        <thead>
                             <tr>
-                                <td colspan="2" style="text-align:center">Nhấn "Refresh App List" để lấy dữ liệu...</td>
+                                <th>PID</th>
+                                <th>Process Name</th>
+                                <th>Threads</th>
+                                <th>Action</th>
                             </tr>
+                        </thead>
+                        <tbody id="processListBody">
+                            <tr><td colspan="4" class="empty-state">Waiting for data fetch...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
             <div id="tab-keylog" class="content-section">
-                <h2>Keylogger Terminal</h2>
-                <div class="control-bar">
-                    <button class="btn btn-success" onclick="startkeyLog()">Start Logging</button>
-                    <button class="btn btn-danger" onclick="stopkeyLog()">Stop Logging</button>
-                    <button class="btn btn-secondary" onclick="clearConsole()">Clear Console</button>
+                <div class="header-box">
+                    <h2><i class="fa-solid fa-terminal"></i> Terminal / Keylogger</h2>
+                    <div class="control-bar">
+                        <button class="btn btn-neon-green" onclick="startkeyLog()"><i class="fa-solid fa-play"></i> Start Log</button>
+                        <button class="btn btn-neon-red" onclick="stopkeyLog()"><i class="fa-solid fa-pause"></i> Stop Log</button>
+                        <button class="btn btn-secondary" onclick="clearConsole()"><i class="fa-solid fa-eraser"></i> Clear</button>
+                    </div>
                 </div>
-                <div class="console-box" id="keylogConsole">
-                    <span class="console-line">Waiting for command...</span>
+                <div class="console-wrapper">
+                    <div class="console-box" id="keylogConsole">
+                        <div class="console-line system-msg">>> System initialized. Waiting for input...<span class="cursor">_</span></div>
+                    </div>
                 </div>
             </div>
 
             <div id="tab-screenshot" class="content-section">
-                <h2>Remote Screenshot</h2>
-                <div class="control-bar">
-                    <button class="btn btn-primary" onclick="screenShot()">Capture Screen</button>
+                <div class="header-box">
+                    <h2><i class="fa-solid fa-desktop"></i> Remote Desktop View</h2>
+                    <button class="btn btn-primary" onclick="screenShot()"><i class="fa-solid fa-camera-retro"></i> Capture Screen</button>
                 </div>
                 <div class="media-display" id="screenshotContainer">
-                    <p>No screenshot captured yet.</p>
+                    <div class="placeholder-text"><i class="fa-regular fa-image"></i><br>No Signal</div>
                 </div>
             </div>
 
             <div id="tab-webcam" class="content-section">
-                <h2>Webcam Streaming</h2>
-                <div class="control-bar">
-                    <button class="btn btn-danger" onclick="webCam()">Record & Stream (10s)</button>
+                <div class="header-box">
+                    <h2><i class="fa-solid fa-eye"></i> Webcam Surveillance</h2>
+                    <button class="btn btn-danger" onclick="webCam()"><i class="fa-solid fa-record-vinyl"></i> Rec & Stream (10s)</button>
                 </div>
                 <div class="media-display">
                     <video id="videoPlayer" width="640" height="480" controls playsinline muted></video>
                 </div>
             </div>
 
-        </div>
-    </div>
-
-    <script src="backend.js"></script>
+        </div> </div> <script src="backend.js"></script>
 </body>
 </html>
