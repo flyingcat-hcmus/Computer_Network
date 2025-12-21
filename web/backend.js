@@ -100,24 +100,32 @@ function connectToSelected() {
     const port = document.getElementById("serverPort").value;
     let ip = "";
 
-    // Nếu đang kết nối thì ngắt kết nối
-    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-        ws.close();
-        return;
-    }
-
-    // --- LOGIC LẤY IP DỰA TRÊN CHẾ ĐỘ ---
+    // 1. Lấy IP (giữ nguyên logic của bạn)
     if (currentConnMode === 'scan') {
-        // Lấy từ Dropdown
         const select = document.getElementById("serverList");
         ip = select.value;
-        if (!ip) { alert("Please select a target from the list!"); return; }
+        if (!ip) { alert("Please select a target!"); return; }
     } else {
-        // Lấy từ ô nhập tay
         ip = document.getElementById("manualIpInput").value.trim();
-        if (!ip) { alert("Please enter a valid IP address!"); return; }
+        if (!ip) { alert("Enter IP!"); return; }
     }
 
+    // 2. LOGIC ĐÓNG SOCKET CŨ (SỬA Ở ĐÂY)
+    // Nếu đang có kết nối (dù là đang nối hay đã nối), đóng nó ngay lập tức
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        console.log("Closing existing connection to: ", ws.url);
+        ws.close(); 
+        // Không return ở đây nữa nếu bạn muốn bấm "Connect" là nó tự chuyển server luôn.
+        // Nhưng để an toàn cho UI, ta đợi nó đóng xong hẳn rồi mới nối cái mới (xử lý ở bước 3).
+    }
+
+    // 3. Nếu nút đang là "Disconnect" (tức là người dùng muốn tắt), thì dừng lại sau khi close
+    if (btn.classList.contains("connected")) {
+        // ws.close() đã được gọi ở trên, ở đây chỉ cần return để kết thúc hàm
+        return; 
+    }
+
+    // 4. Tạo kết nối mới
     connectToServer(ip, port);
 }
 
@@ -444,3 +452,10 @@ function confirmSystem(action) {
         logKeyToConsole(`>>> [SYSTEM] Sent ${action.toUpperCase()} command.`);
     }
 }
+
+window.onbeforeunload = function() {
+    if (ws) {
+        ws.onclose = function () {}; // Tắt sự kiện onclose để không kích hoạt UI update khi trang đang đóng
+        ws.close();
+    }
+};
