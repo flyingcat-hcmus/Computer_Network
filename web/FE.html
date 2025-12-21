@@ -99,7 +99,7 @@
                     <h2><i class="fa-brands fa-windows"></i> Application Manager</h2>
                     <div class="control-bar">
                         <div class="manual-input">
-                            <input type="text" id="manualAppName" placeholder="App Name (e.g., notepad.exe)">
+                            <input type="text" id="manualAppName" placeholder="App Name (e.g., notepad)">
                             <button class="btn btn-neon-green" onclick="manualStart()"><i class="fa-solid fa-play"></i> Run</button>
                             <button class="btn btn-neon-red" onclick="manualStop()"><i class="fa-solid fa-stop"></i> Kill</button>
                         </div>
@@ -126,6 +126,11 @@
                 <div class="header-box">
                     <h2><i class="fa-solid fa-microchip"></i> Process Manager</h2>
                     <div class="control-bar">
+                        <div class="manual-input">
+                            <input type="text" id="manualProcName" placeholder="Process Name (e.g., notepad)">
+                            <button class="btn btn-neon-green" onclick="manualStartProcByName()"><i class="fa-solid fa-play"></i> Run</button>
+                            <button class="btn btn-neon-red" onclick="manualStopProcByName()"><i class="fa-solid fa-skull"></i> Stop</button>
+                        </div>
                         <div class="manual-input">
                             <input type="text" id="manualProcID" placeholder="PID (e.g., 1234)">
                             <button class="btn btn-neon-red" onclick="manualStopProc()"><i class="fa-solid fa-skull"></i> Kill PID</button>
@@ -186,7 +191,7 @@
                     <video id="videoPlayer" width="640" height="480" controls playsinline muted></video>
                 </div>
             </div>
-
-        </div> </div> <script src="backend.js"></script>
+        <div id="toast-container"></div>
+        <script src="backend.js"></script>
 </body>
 </html>

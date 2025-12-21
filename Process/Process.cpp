@@ -4,12 +4,6 @@
 #include <iomanip> // For formatting output
 #include "../Application/ConvertString.cpp"
 
-#include <windows.h>
-#include <tlhelp32.h>
-#include <iostream>
-#include <string>
-#include "../Application/ConvertString.cpp"
-
 void ListRunningProcesses(std::string& ans) {
     HANDLE hProcessSnap;
     PROCESSENTRY32W pe32; // Sử dụng bản Unicode tường minh

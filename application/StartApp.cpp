@@ -6,27 +6,50 @@
 #include <filesystem>
 #include "ConvertString.cpp"
 
-bool StartAppViaAppPaths(const std::wstring& exeName)
+// Tìm file theo tên trong toàn bộ ổ D
+bool FindFileRecursive(const std::wstring& folder, const std::wstring& targetName, std::wstring& outputPath)
 {
-    HKEY hKey;
-    std::wstring keyPath =
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + exeName;
+    WIN32_FIND_DATAW fd;
+    HANDLE hFind;
 
-    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, keyPath.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS &&
-        RegOpenKeyExW(HKEY_CURRENT_USER, keyPath.c_str(), 0, KEY_READ, &hKey) != ERROR_SUCCESS)
+    std::wstring search = folder + L"\\*";
+
+    hFind = FindFirstFileW(search.c_str(), &fd);
+    if (hFind == INVALID_HANDLE_VALUE)
         return false;
 
-    WCHAR path[MAX_PATH];
-    DWORD size = sizeof(path);
+    do {
+        std::wstring name = fd.cFileName;
 
-    if (RegQueryValueExW(hKey, nullptr, nullptr, nullptr, (LPBYTE)path, &size) == ERROR_SUCCESS)
-    {
-        ShellExecuteW(nullptr, L"open", path, nullptr, nullptr, SW_SHOWNORMAL);
-        RegCloseKey(hKey);
-        return true;
-    }
+        // Skip . ..
+        if (name == L"." || name == L"..")
+            continue;
 
-    RegCloseKey(hKey);
+        std::wstring fullPath = folder + L"\\" + name;
+
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            // Đệ quy vào thư mục con
+            if (FindFileRecursive(fullPath, targetName, outputPath))
+            {
+                FindClose(hFind);
+                return true;
+            }
+        }
+        else
+        {
+            // Kiểm tra tên file
+            if (_wcsicmp(name.c_str(), targetName.c_str()) == 0)
+            {
+                outputPath = fullPath;
+                FindClose(hFind);
+                return true;
+            }
+        }
+
+    } while (FindNextFileW(hFind, &fd));
+
+    FindClose(hFind);
     return false;
 }
 
@@ -42,28 +65,20 @@ void StartApplication(const std::string& appName, bool& flag)
         return;
     }
 
-    // 2. Thử App Paths
-    if (StartAppViaAppPaths(wApp + L".exe")) {
+    // 2. Thử tìm hết ổ C và D
+	std::wstring wAppName = ToWString(appName) + L".exe";
+    std::wstring foundPath = L"";
+    // Tìm file trong ổ D
+    if (FindFileRecursive(L"D:\\", wAppName, foundPath)) {
+        ShellExecuteW(NULL, L"open", foundPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
         flag = true;
-        return;
     }
-
-    flag = false;
+    // Tìm file trong ổ C
+    else if (FindFileRecursive(L"C:\\", wAppName, foundPath)) {
+        ShellExecuteW(NULL, L"open", foundPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
+        flag = true;
+    }
+    else {
+        flag = false;
+    }
 }
-
-/*
-// Cách đơn giản hơn nhưng không bao quát bằng cách trên
-bool StartApp(const std::wstring& name)
-{
-    // 1. Để Windows tự resolve
-    HINSTANCE h = ShellExecuteW(nullptr, L"open", name.c_str(),
-                                nullptr, nullptr, SW_SHOWNORMAL);
-    if ((INT_PTR)h > 32)
-        return true;
-
-    // 2. Thử name.exe
-    h = ShellExecuteW(nullptr, L"open", (name + L".exe").c_str(),
-                      nullptr, nullptr, SW_SHOWNORMAL);
-    return (INT_PTR)h > 32;
-} 
-*/

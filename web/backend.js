@@ -36,7 +36,7 @@ function scanNetwork() {
     const serverSelect = document.getElementById("serverList");
 
     if (!subnet.endsWith(".")) {
-        alert("Subnet phải kết thúc bằng dấu chấm (VD: 192.168.1.)");
+        showToast("Base IP không hợp lệ! Phải nhập vào dưới dạng 192.168.x. (e.g. 192.168.1.)", "lỗi")
         return;
     }
 
@@ -70,12 +70,17 @@ function checkServer(ip, port, doneCallback) {
         foundServers.push(ip);
         testWS.close();
     };
-    testWS.onerror = () => { };
+    testWS.onerror = () => {
+        console.log("NOT FOUND: " + ip);
+    };
     testWS.onclose = () => {
         if (doneCallback) { doneCallback(); doneCallback = null; }
     };
+    
     setTimeout(() => {
-        if (!isConnected && testWS.readyState !== WebSocket.OPEN) { testWS.close(); }
+        if (!isConnected && testWS.readyState !== WebSocket.OPEN) {
+            testWS.close();
+        }
     }, 5000);
 }
 
@@ -100,32 +105,24 @@ function connectToSelected() {
     const port = document.getElementById("serverPort").value;
     let ip = "";
 
-    // 1. Lấy IP (giữ nguyên logic của bạn)
+    // Nếu đang kết nối thì ngắt kết nối
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        ws.close();
+        return;
+    }
+
+    // --- LOGIC LẤY IP DỰA TRÊN CHẾ ĐỘ ---
     if (currentConnMode === 'scan') {
+        // Lấy từ Dropdown
         const select = document.getElementById("serverList");
         ip = select.value;
-        if (!ip) { alert("Please select a target!"); return; }
+        if (!ip) { showToast("Please select a target from the list!", "warning"); return; }
     } else {
+        // Lấy từ ô nhập tay
         ip = document.getElementById("manualIpInput").value.trim();
-        if (!ip) { alert("Enter IP!"); return; }
+        if (!ip) { showToast("Please enter a valid IP address!", "warning"); return; }
     }
 
-    // 2. LOGIC ĐÓNG SOCKET CŨ (SỬA Ở ĐÂY)
-    // Nếu đang có kết nối (dù là đang nối hay đã nối), đóng nó ngay lập tức
-    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-        console.log("Closing existing connection to: ", ws.url);
-        ws.close(); 
-        // Không return ở đây nữa nếu bạn muốn bấm "Connect" là nó tự chuyển server luôn.
-        // Nhưng để an toàn cho UI, ta đợi nó đóng xong hẳn rồi mới nối cái mới (xử lý ở bước 3).
-    }
-
-    // 3. Nếu nút đang là "Disconnect" (tức là người dùng muốn tắt), thì dừng lại sau khi close
-    if (btn.classList.contains("connected")) {
-        // ws.close() đã được gọi ở trên, ở đây chỉ cần return để kết thúc hàm
-        return; 
-    }
-
-    // 4. Tạo kết nối mới
     connectToServer(ip, port);
 }
 
@@ -140,7 +137,7 @@ function connectToServer(ip, port) {
         ws.onclose = onWSClose;
         ws.onmessage = onWSMessage;
         ws.onerror = onWSError;
-    } catch (e) { console.error(e); alert("Connection Failed!"); }
+    } catch (e) { console.error(e); showToast("Connection Failed! Check console for details.", "error"); }
 }
 
 function onWSOpen() {
@@ -190,22 +187,54 @@ function onWSMessage(event) {
 }
 
 function HandleClientMSG(data) {
-    console.log(data);
+    console.log(data); // Debug
+
+    // Các flag xử lý Media
     if (data == "screenshot") { flag = 1; return; }
     if (data == "webcam") { flag = 2; return; }
-    if (data == "Keylogging started.") { flag = 3; logKeyToConsole(">>> [SYSTEM] Keylogger Started"); return; }
-    if (data == "Keylogging stopped.") { flag = 4; logKeyToConsole(">>> [SYSTEM] Keylogger Stopped"); return; }
+    
+    // Các flag xử lý Keylog status
+    if (data == "Keylogging started.") { 
+        flag = 3; 
+        logKeyToConsole(">>> [SYSTEM] Keylogger Started"); 
+        showToast("Keylogger started successfully!", "success"); // Thêm thông báo đẹp
+        return; 
+    }
+    if (data == "Keylogging stopped.") { 
+        flag = 4; 
+        logKeyToConsole(">>> [SYSTEM] Keylogger Stopped"); 
+        showToast("Keylogger stopped.", "warning"); // Thêm thông báo đẹp
+        return; 
+    }
     if (data === "Keylog") {
         flag = 7;
-        console.log("WTF");
         return;
     }
 
-    if (flag === 5) renderProcessListToTable(data);
-    else if (flag == 6) renderAppListToTable(data);
-    else if (flag == 7) logKeyToConsole(data);
-    else if (flag == 8) alert(data);
+    // Xử lý dữ liệu trả về dựa trên flag
+    if (flag === 5) {
+        renderProcessListToTable(data);
+        showToast("Process list updated.", "info"); // Báo nhẹ là đã xong
+    }
+    else if (flag == 6) {
+        renderAppListToTable(data);
+        showToast("Application list refreshed.", "info");
+    }
+    else if (flag == 7) {
+        logKeyToConsole(data);
+    }
+    else if (flag == 8) {
+        // --- THAY THẾ ALERT TẠI ĐÂY ---
+        // Tự động phát hiện lỗi để chọn màu thông báo
+        const lowerData = data.toLowerCase();
+        if (lowerData.includes("failed") || lowerData.includes("error") || lowerData.includes("not found")) {
+            showToast(data, "error");
+        } else {
+            showToast(data, "success");
+        }
+    }
 
+    // Reset flag (trừ khi đang keylog liên tục - flag 3)
     if (flag != 3) flag = -1;
 }
 
@@ -213,7 +242,7 @@ function sendCommand(cmd) {
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(cmd);
     } else {
-        alert("Not Connected!");
+        showToast("Not Connected to Server!", "error");
     }
 }
 
@@ -241,7 +270,7 @@ function renderAppListToTable(dataString) {
 
             // 1. Cột Tên App
             const tdName = document.createElement("td");
-            tdName.innerHTML = `<strong style="color: #fff; font-size: 13px;">${name}</strong><br><span style="font-size: 11px; color: #666; font-family: 'JetBrains Mono', monospace;">${path || 'Unknown Path'}</span>`;
+            tdName.innerHTML = `<strong style="color: #fff; font-size: 13px;">${name}</strong><br><span style="font-size: 11px; color: #666; font-family: 'JetBrains Mono', monospace;">${path !== "Not Found" ? path : ""}</span>`;
 
             // 2. Cột Control (Action)
             const tdAction = document.createElement("td");
@@ -291,7 +320,7 @@ function listProcess() {
         flag = 5;
         document.getElementById("processListBody").innerHTML = '<tr><td colspan="4" style="text-align:center; color:#ff9f43;">Fetching process list...</td></tr>';
         ws.send("list_processes");
-    } else alert("Not Connected!");
+    } else showToast("Not Connected to Server!", "error");
 }
 
 function renderProcessListToTable(dataString) {
@@ -337,6 +366,13 @@ function renderProcessListToTable(dataString) {
 function manualStopProc() {
     const pid = document.getElementById("manualProcID").value; if (pid) { flag = 8; sendCommand("stop_process:" + pid); }
 }
+function manualStartProcByName() {
+    const name = document.getElementById("manualProcName").value; if (name) { flag = 8; sendCommand("start_proc_name:" + name); }
+}
+function manualStopProcByName() {
+    const name = document.getElementById("manualProcName").value; if (name) { flag = 8; sendCommand("stop_proc_name:" + name); }
+}
+
 
 function createBtn(text, className, onClick) {
     const btn = document.createElement("button");
@@ -432,7 +468,7 @@ function clearConsole() {
 // --- SYSTEM CONTROL LOGIC ---
 function confirmSystem(action) {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-        alert("Not Connected to Server!");
+        showToast("Not Connected to Server!", "error");
         return;
     }
 
@@ -447,15 +483,38 @@ function confirmSystem(action) {
         } else {
             sendCommand("restart");
         }
-
-        // Thông báo cho người dùng biết lệnh đã gửi
-        logKeyToConsole(`>>> [SYSTEM] Sent ${action.toUpperCase()} command.`);
     }
 }
 
-window.onbeforeunload = function() {
-    if (ws) {
-        ws.onclose = function () {}; // Tắt sự kiện onclose để không kích hoạt UI update khi trang đang đóng
-        ws.close();
-    }
-};
+// --- CUSTOM NOTIFICATION SYSTEM ---
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    
+    // Tạo thẻ div thông báo
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    // Chọn icon dựa trên type
+    let iconClass = 'fa-circle-info';
+    if (type === 'success') iconClass = 'fa-check-circle';
+    if (type === 'error') iconClass = 'fa-triangle-exclamation';
+    if (type === 'warning') iconClass = 'fa-bell';
+
+    toast.innerHTML = `
+        <div style="display:flex; align-items:center;">
+            <i class="fa-solid ${iconClass}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+
+    // Thêm vào giao diện
+    container.appendChild(toast);
+
+    // Tự động xóa sau 3 giây
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s forwards';
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    }, 3000);
+}
